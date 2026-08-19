@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { WifiOff, RefreshCw, Home, Utensils, Wifi } from 'lucide-react';
+import './OfflinePage.css';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    OfflinePage
@@ -338,32 +339,12 @@ const OfflinePage = ({ isOfflineError = true, onRetry }) => {
   ];
 
   return (
-    <>
-      {/* Inject minimal keyframe for spin & fade-in (one-time) */}
-      <style>{`
-        @keyframes ob-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes ob-fade-up {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .ob-card { animation: ob-fade-up 0.55s cubic-bezier(0.22,1,0.36,1) both; }
-        .ob-spin { animation: ob-spin 0.8s linear infinite; }
-        .ob-btn-retry:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 28px rgba(46,155,98,0.5) !important;
-        }
-        .ob-btn-home:hover {
-          background: rgba(255,255,255,0.08) !important;
-          border-color: rgba(228,244,234,0.5) !important;
-        }
-      `}</style>
-
-      <div style={styles.root}>
-        {/* Background decoration */}
-        <div style={styles.blob1} />
-        <div style={styles.blob2} />
-        <div style={styles.blob3} />
-        <div style={styles.gridPattern} />
+    <div style={styles.root}>
+      {/* Background decoration */}
+      <div style={styles.blob1} />
+      <div style={styles.blob2} />
+      <div style={styles.blob3} />
+      <div style={styles.gridPattern} />
 
         {/* Main Card */}
         <div style={styles.card} className="ob-card">
@@ -471,9 +452,8 @@ const OfflinePage = ({ isOfflineError = true, onRetry }) => {
           <p style={styles.footerNote}>
             © {new Date().getFullYear()} Gita-Bhojanalay &nbsp;·&nbsp; Zero Food Wastage Initiative
           </p>
-        </div>
       </div>
-    </>
+    </div>
   );
 };
 
