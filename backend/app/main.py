@@ -89,6 +89,23 @@ async def add_security_headers(request, call_next):
     return response
 
 
+# UPTIME ROBOT RESTRICTION MIDDLEWARE
+
+@app.middleware("http")
+async def restrict_uptime_robot(request, call_next):
+    user_agent = request.headers.get("user-agent", "")
+    if "uptimerobot" in user_agent.lower():
+        if request.url.path != "/api/health":
+            from fastapi.responses import JSONResponse
+            from fastapi import status
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "Forbidden: Uptime Robot is restricted to the health API only."}
+            )
+    return await call_next(request)
+
+
+
 # ROUTERS
 
 from fastapi import APIRouter
