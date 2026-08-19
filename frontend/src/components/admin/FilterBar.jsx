@@ -1,0 +1,72 @@
+import React from 'react';
+import { Search, Building, X } from 'lucide-react';
+
+export const FilterBar = ({
+  searchQuery,
+  setSearchQuery,
+  selectedHostel,
+  setSelectedHostel,
+  onSearch,
+  onReset,
+}) => {
+  const hostels = ['Hostel A', 'Hostel B', 'Hostel C', 'Girls Hostel 1', 'Boys Hostel 2'];
+
+  return (
+    <div className="card" style={{
+      backgroundColor: 'var(--color-white)',
+      marginBottom: '1.5rem',
+      padding: '1.25rem',
+    }}>
+      <form onSubmit={(e) => { e.preventDefault(); onSearch(); }} style={{
+        display: 'flex',
+        gap: '1rem',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+      }}>
+        {/* Search Query Input */}
+        <div style={{ flex: '1 1 220px', position: 'relative', width: '100%' }}>
+          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+          <input
+            type="text"
+            className="form-input"
+            style={{ paddingLeft: '2.5rem' }}
+            placeholder="Search by name, roll, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Hostel Filter Dropdown */}
+        <div style={{ flex: '0 1 200px', position: 'relative', width: '100%', minWidth: '160px' }}>
+          <Building size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)', pointerEvents: 'none' }} />
+          <select
+            className="form-select"
+            style={{ paddingLeft: '2.5rem' }}
+            value={selectedHostel}
+            onChange={(e) => setSelectedHostel(e.target.value)}
+          >
+            <option value="">All Hostels</option>
+            {hostels.map((h) => (
+              <option key={h} value={h}>{h}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Search & Reset Buttons */}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button type="submit" className="btn btn-primary btn-sm">
+            <Search size={16} /> Filter
+          </button>
+
+          {(searchQuery || selectedHostel) && (
+            <button type="button" onClick={onReset} className="btn btn-outline btn-sm">
+              <X size={16} /> Clear
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default FilterBar;

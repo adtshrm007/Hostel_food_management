@@ -1,0 +1,10 @@
+<!--
+===============================================================================
+FILE PURPOSE:
+Placeholder file to keep the frontend/public directory tracked in Git repository.
+Stores static public assets such as favicons, logos, and web manifests.
+
+CONNECTED FILES & FOLDERS:
+- Connected to: frontend/index.html (Serves static assets referenced in HTML head)
+===============================================================================
+-->

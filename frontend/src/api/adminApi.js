@@ -1,0 +1,57 @@
+import axiosInstance from './axiosInstance';
+
+export const adminApi = {
+  getStudents: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.hostel) params.append('hostel', filters.hostel);
+
+    const response = await axiosInstance.get(`/admin/students?${params.toString()}`);
+    return response.data;
+  },
+
+  getStudentById: async (studentId) => {
+    const response = await axiosInstance.get(`/admin/students/${studentId}`);
+    return response.data;
+  },
+
+  getStudentPreferences: async (studentId) => {
+    const response = await axiosInstance.get(`/admin/students/${studentId}/preferences`);
+    return response.data;
+  },
+
+  updateStudentPreference: async (studentId, preferenceData) => {
+    const response = await axiosInstance.put(`/preference/admin/${studentId}`, preferenceData);
+    return response.data;
+  },
+
+  getDailySummary: async (params = {}) => {
+    let url = '/admin/summary';
+    if (typeof params === 'string') {
+      url = `/admin/summary?target_date=${params}`;
+    } else if (params && params.start_date && params.end_date) {
+      url = `/admin/summary?start_date=${params.start_date}&end_date=${params.end_date}`;
+    } else if (params && params.target_date) {
+      url = `/admin/summary?target_date=${params.target_date}`;
+    }
+    const response = await axiosInstance.get(url);
+    return response.data;
+  },
+
+  getPendingAdmins: async () => {
+    const response = await axiosInstance.get('/admin/pending-admins');
+    return response.data;
+  },
+
+  approveAdmin: async (adminId) => {
+    const response = await axiosInstance.post(`/admin/approve-admin/${adminId}`);
+    return response.data;
+  },
+
+  rejectAdmin: async (adminId) => {
+    const response = await axiosInstance.delete(`/admin/reject-admin/${adminId}`);
+    return response.data;
+  },
+};
+
+export default adminApi;

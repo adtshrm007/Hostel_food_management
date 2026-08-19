@@ -1,0 +1,16 @@
+# ===============================================================================
+# FILE PURPOSE:
+# Root .gitignore file for the Bhojanalay project repository.
+# Specifies untracked files, environment variables, build outputs, and dependencies
+# that Git should ignore across both frontend and backend modules.
+#
+# CONNECTED FILES & FOLDERS:
+# - Connected to: backend/.env (Prevents exposing backend secret keys & credentials)
+# - Connected to: frontend/.env (Prevents exposing frontend env variables)
+# - Connected to: backend/__pycache__/, backend/.pytest_cache/ (Ignores Python caches)
+# - Connected to: frontend/node_modules/, frontend/dist/ (Ignores JS dependencies & builds)
+# ===============================================================================
+frontend/node_modules
+frontend/dist
+frontend/.env
+backend/.env

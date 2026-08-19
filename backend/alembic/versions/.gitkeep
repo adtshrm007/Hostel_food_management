@@ -1,0 +1,7 @@
+# ===============================================================================
+# FILE PURPOSE:
+# Placeholder file to ensure the backend/alembic/versions directory is tracked by Git.
+#
+# CONNECTED FILES & FOLDERS:
+# - Connected to: backend/alembic/env.py (Migration output target)
+# ===============================================================================
