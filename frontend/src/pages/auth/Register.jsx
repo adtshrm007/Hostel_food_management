@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import authApi from '../../api/authApi';
 import { extractErrorMessage } from '../../utils/errorHelpers';
 import { User, Mail, Lock, Phone, Building, Hash, ArrowRight, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { HOSTEL_OPTIONS } from '../../utils/hostels';
 
 export const Register = () => {
   const [searchParams] = useSearchParams();
@@ -15,7 +16,7 @@ export const Register = () => {
     name: '',
     roll: '',
     phone: '',
-    hostel: 'Hostel A',
+    hostel: HOSTEL_OPTIONS[0],
     email: '',
     password: '',
   });
@@ -264,11 +265,11 @@ export const Register = () => {
                     onChange={handleStudentChange}
                     required
                   >
-                    <option value="Hostel A">Hostel A</option>
-                    <option value="Hostel B">Hostel B</option>
-                    <option value="Hostel C">Hostel C</option>
-                    <option value="Girls Hostel 1">Girls Hostel 1</option>
-                    <option value="Boys Hostel 2">Boys Hostel 2</option>
+                    {HOSTEL_OPTIONS.map((hostelName) => (
+                      <option key={hostelName} value={hostelName}>
+                        {hostelName}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

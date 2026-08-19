@@ -41,16 +41,16 @@ export const Footer = () => {
               <h3 style={{ color: 'var(--color-cream)', marginBottom: '0.25rem', fontFamily: 'var(--font-heading)' }}>
                 Gita-Bhojanalay Hostel Food Management
               </h3>
-            <p style={{ color: 'var(--color-mint)', fontSize: '0.9rem', marginBottom: 0 }}>
-              Empowering students and administration to eliminate food wastage through smart weekly choices.
-            </p>
+              <p style={{ color: 'var(--color-mint)', fontSize: '0.9rem', marginBottom: 0 }}>
+                Empowering students and administration to eliminate food wastage through smart weekly choices.
+              </p>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <span className="badge badge-mint" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
               <Leaf size={16} /> Eco-Conscious Platform
             </span>
           </div>
-        </div>
         </div>
 
         <div style={{

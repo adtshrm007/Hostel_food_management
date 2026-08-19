@@ -1,6 +1,8 @@
 import React from 'react';
 import { Search, Building, X } from 'lucide-react';
 
+import { HOSTEL_OPTIONS } from '../../utils/hostels';
+
 export const FilterBar = ({
   searchQuery,
   setSearchQuery,
@@ -9,7 +11,6 @@ export const FilterBar = ({
   onSearch,
   onReset,
 }) => {
-  const hostels = ['Hostel A', 'Hostel B', 'Hostel C', 'Girls Hostel 1', 'Boys Hostel 2'];
 
   return (
     <div className="card" style={{
@@ -46,7 +47,7 @@ export const FilterBar = ({
             onChange={(e) => setSelectedHostel(e.target.value)}
           >
             <option value="">All Hostels</option>
-            {hostels.map((h) => (
+            {HOSTEL_OPTIONS.map((h) => (
               <option key={h} value={h}>{h}</option>
             ))}
           </select>
