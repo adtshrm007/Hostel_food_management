@@ -41,29 +41,37 @@ DEFAULT_MENU = [
 ]
 
 
+from app.config import settings
+
+ADMIN_USERNAME = settings.ADMIN_USERNAME
+ADMIN_PASSWORD = settings.ADMIN_PASSWORD
+
+
 def seed_database():
     """Seed initial admin and menu entries if they do not exist."""
     create_db_and_tables()
 
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE admin ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("UPDATE admin SET is_approved = TRUE WHERE username = 'admin';"))
+        conn.execute(text(f"UPDATE admin SET is_approved = TRUE WHERE username = '{ADMIN_USERNAME}';"))
         conn.commit()
 
     with Session(engine) as session:
         # 1. Seed Admin
-        admin = session.exec(select(Admin).where(Admin.username == "admin")).first()
+        admin = session.exec(select(Admin).where(Admin.username == ADMIN_USERNAME)).first()
         if not admin:
             admin = Admin(
-                username="admin",
-                password_hash=hash_password("admin123"),
+                username=ADMIN_USERNAME,
+                password_hash=hash_password(ADMIN_PASSWORD),
                 is_approved=True,
             )
             session.add(admin)
-            # print("Seeded default admin account (username: admin, password: admin123)")
+            print(f"Seeded default admin account (username: {ADMIN_USERNAME})")
         else:
             admin.is_approved = True
+            admin.password_hash = hash_password(ADMIN_PASSWORD)
             session.add(admin)
+            print(f"Updated default admin account (username: {ADMIN_USERNAME})")
 
         # 2. Seed / Update Weekly Menu
         updated_count = 0

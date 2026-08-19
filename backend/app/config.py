@@ -23,6 +23,9 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXP: int = 30
 
+    ADMIN_USERNAME: str | None = None
+    ADMIN_PASSWORD: str | None = None
+
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
