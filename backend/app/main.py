@@ -71,35 +71,23 @@ async def add_security_headers(request, call_next):
 
 # ROUTERS
 
-app.include_router(
-    auth.router,
-    prefix="/auth",
-    tags=["Authentication"],
-)
+from fastapi import APIRouter
 
-app.include_router(
-    student.router,
-    prefix="/student",
-    tags=["Student"],
-)
+# Register root-level prefixes (/auth, /student, /admin, /menu, /preference)
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(student.router, prefix="/student", tags=["Student"])
+app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(menu.router, prefix="/menu", tags=["Menu"])
+app.include_router(preference.router, prefix="/preference", tags=["Preference"])
 
-app.include_router(
-    admin.router,
-    prefix="/admin",
-    tags=["Admin"],
-)
-
-app.include_router(
-    menu.router,
-    prefix="/menu",
-    tags=["Menu"],
-)
-
-app.include_router(
-    preference.router,
-    prefix="/preference",
-    tags=["Preference"],
-)
+# Also register under /api prefix (/api/auth, /api/student, etc.) to support frontend proxies
+api_router = APIRouter(prefix="/api")
+api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(student.router, prefix="/student", tags=["Student"])
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
+api_router.include_router(menu.router, prefix="/menu", tags=["Menu"])
+api_router.include_router(preference.router, prefix="/preference", tags=["Preference"])
+app.include_router(api_router)
 
 
 # HEALTH CHECK & FRONTEND STATIC SERVING
@@ -117,14 +105,15 @@ if os.path.exists(frontend_dist):
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        if full_path.startswith("auth") or full_path.startswith("student") or full_path.startswith("admin") or full_path.startswith("menu") or full_path.startswith("preference"):
+        # Exclude API endpoints from static fallback
+        if full_path.startswith("api/") or full_path.startswith("auth") or full_path.startswith("student") or full_path.startswith("admin") or full_path.startswith("menu") or full_path.startswith("preference"):
             return {"message": "Gita-Bhojanalay API is running"}
         
         file_path = os.path.join(frontend_dist, full_path)
         if full_path and os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)
         
-        index_file = os.path.join(frontend_dist, index.html) if False else os.path.join(frontend_dist, "index.html")
+        index_file = os.path.join(frontend_dist, "index.html")
         return FileResponse(index_file)
 else:
     @app.get(
