@@ -41,16 +41,16 @@ export const Footer = () => {
               <h3 style={{ color: 'var(--color-cream)', marginBottom: '0.25rem', fontFamily: 'var(--font-heading)' }}>
                 Gita-Bhojanalay Hostel Food Management
               </h3>
-              <p style={{ color: 'var(--color-mint)', fontSize: '0.9rem', marginBottom: 0 }}>
-                Empowering students and administration to eliminate food wastage through smart weekly choices.
-              </p>
-            </div>
+            <p style={{ color: 'var(--color-mint)', fontSize: '0.9rem', marginBottom: 0 }}>
+              Empowering students and administration to eliminate food wastage through smart weekly choices.
+            </p>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <span className="badge badge-mint" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
               <Leaf size={16} /> Eco-Conscious Platform
             </span>
           </div>
+        </div>
         </div>
 
         <div style={{
@@ -66,7 +66,7 @@ export const Footer = () => {
             © {new Date().getFullYear()} Gita-Bhojanalay. All rights reserved.
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            Crafted with <Heart size={14} color="var(--color-coral)" fill="var(--color-coral)" /> for Zero Wastage Hostels
+            Crafted with <Heart size={14} color="var(--color-coral)" fill="var(--color-coral)" /> BY CST.
           </div>
         </div>
       </div>
