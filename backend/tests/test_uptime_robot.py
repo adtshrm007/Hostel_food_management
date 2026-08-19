@@ -13,10 +13,14 @@ def client_fixture():
     return TestClient(app)
 
 def test_uptime_robot_can_access_health_endpoint(client: TestClient):
-    # Requesting health endpoint with UptimeRobot User-Agent
+    # Requesting health endpoint with UptimeRobot User-Agent (GET)
     response = client.get("/api/health", headers={"User-Agent": "UptimeRobot/7.0"})
     assert response.status_code == 200
     assert response.json() == {"message": "Gita-Bhojanalay API is running"}
+
+    # Requesting health endpoint with UptimeRobot User-Agent (HEAD)
+    response_head = client.head("/api/health", headers={"User-Agent": "UptimeRobot/7.0"})
+    assert response_head.status_code == 200
 
 
 def test_uptime_robot_blocked_from_other_endpoints(client: TestClient):

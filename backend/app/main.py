@@ -56,10 +56,11 @@ app.add_middleware(
 )
 
 # Health
-@app.get(
-        "/api/health",
-        tags=["Health"],
-    )
+@app.api_route(
+    "/api/health",
+    methods=["GET", "HEAD"],
+    tags=["Health"],
+)
 def root():
     """
     Basic API health endpoint.
