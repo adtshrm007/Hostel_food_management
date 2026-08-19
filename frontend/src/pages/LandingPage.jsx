@@ -25,6 +25,8 @@ export const LandingPage = () => {
               <img
                 src="/images.jpeg"
                 alt="Gita-Bhojanalay Logo"
+                width="48"
+                height="48"
                 style={{
                   width: '48px',
                   height: '48px',

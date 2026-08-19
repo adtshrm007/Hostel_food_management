@@ -1,14 +1,14 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 
-export const Loader = ({ message = 'Loading...' }) => {
+export const Loader = ({ message = 'Loading...', fullPage = false }) => {
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: '220px',
+      minHeight: fullPage ? 'calc(100vh - 74px - 140px)' : '220px',
       gap: '1rem',
       color: 'var(--color-navy)',
     }}>

@@ -24,7 +24,7 @@ const MainLayout = () => {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar />
       <main style={{ flex: 1 }}>
-        <Suspense fallback={<Loader message="Loading page..." />}>
+        <Suspense fallback={<Loader message="Loading page..." fullPage={true} />}>
           <Outlet />
         </Suspense>
       </main>

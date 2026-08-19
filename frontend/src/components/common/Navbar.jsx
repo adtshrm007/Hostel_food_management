@@ -54,6 +54,8 @@ export const Navbar = () => {
             <img
               src="/images.jpeg"
               alt="Gita-Bhojanalay Logo"
+              width="42"
+              height="42"
               style={{
                 width: '42px',
                 height: '42px',
