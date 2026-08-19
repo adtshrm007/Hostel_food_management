@@ -42,6 +42,9 @@ from app.schemas.menu import MenuResponse
 
 router = APIRouter()
 
+# In-memory cache for static weekly menu items
+_MENU_CACHE: list[Menu] | None = None
+
 
 @router.get(
     "/",
@@ -52,18 +55,17 @@ def get_weekly_menu(
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve the complete fixed weekly menu.
-
-    The authenticated student is required for access, but the menu itself
-    is not specific to the student.
-
-    Returns:
-        list[MenuResponse]:
-            The available menu records for all seven days and both meals.
+    Retrieve the complete fixed weekly menu (served from in-memory cache when available).
     """
+    global _MENU_CACHE
 
-    statement = select(Menu).order_by(
-        Menu.menu_id
-    )
+    if _MENU_CACHE is not None and len(_MENU_CACHE) > 0:
+        return _MENU_CACHE
 
-    return list(db.exec(statement).all())
+    statement = select(Menu).order_by(Menu.menu_id)
+    menu_records = list(db.exec(statement).all())
+
+    if menu_records:
+        _MENU_CACHE = menu_records
+
+    return menu_records

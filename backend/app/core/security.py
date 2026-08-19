@@ -37,7 +37,7 @@
 #       Uses the authenticated user's identity/role to enforce access control.
 # ===============================================================================
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -91,11 +91,13 @@ def create_access_token(data: dict) -> str:
 
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(
         minutes=settings.ACCESS_TOKEN_EXP
     )
 
     to_encode.update({
+        "iat": now,
         "exp": expire
     })
 

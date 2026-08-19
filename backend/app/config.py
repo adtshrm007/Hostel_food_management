@@ -10,20 +10,30 @@
 # - Connected to: backend/app/core/security.py (Provides SECRET_KEY & ALGORITHM for JWT)
 # - Connected to: backend/app/main.py (Provides CORS settings and app metadata)
 # ===============================================================================
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
 
-    DATABASE_URL:str
+    DATABASE_URL: str
 
-    SECRET_KEY :str
+    SECRET_KEY: str
 
     # Jwt alg
-    ALGORITHM : str = 'HS256'
+    ALGORITHM: str = 'HS256'
 
-    ACCESS_TOKEN_EXP : int = 30
+    ACCESS_TOKEN_EXP: int = 30
 
-    class Config:
-        env_file='.env'
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
 
-settings=Settings()
+    model_config = SettingsConfigDict(
+        env_file=('backend/.env', '.env'),
+        env_file_encoding='utf-8',
+        extra='ignore'
+    )
+
+settings = Settings()

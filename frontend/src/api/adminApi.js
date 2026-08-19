@@ -1,6 +1,11 @@
 import axiosInstance from './axiosInstance';
 
 export const adminApi = {
+  getMe: async () => {
+    const response = await axiosInstance.get('/admin/me');
+    return response.data;
+  },
+
   getStudents: async (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.search) params.append('search', filters.search);

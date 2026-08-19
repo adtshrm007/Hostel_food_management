@@ -65,7 +65,10 @@ from app.services.preference_service import (
     get_student_week_preferences,
     submit_weekly_preferences,
 )
-from app.utils.date_utils import get_upcoming_week_start
+from app.utils.date_utils import (
+    get_target_week_start,
+    get_current_local_date,
+)
 
 
 router = APIRouter()
@@ -106,7 +109,7 @@ def submit_weekly_preference(
             db=db,
             student_id=current_student.student_id,
             preferences=submission.preferences,
-            current_date=date.today(),
+            current_date=get_current_local_date(),
         )
 
         return preferences
@@ -127,19 +130,11 @@ def get_my_weekly_preferences(
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve the authenticated student's preferences for the upcoming week.
-
-    Returns:
-        list[PreferenceResponse]:
-            Existing preferences for the upcoming week.
-
-    Note:
-        If the student has not submitted preferences yet, the list may
-        contain fewer than 14 records.
+    Retrieve the authenticated student's preferences for the active/upcoming week.
     """
 
-    week_start = get_upcoming_week_start(
-        date.today()
+    week_start = get_target_week_start(
+        get_current_local_date()
     )
 
     return get_student_week_preferences(
@@ -193,7 +188,7 @@ def admin_update_student_preference(
             meal_date=preference_data.meal_date,
             meal_type=preference_data.meal_type,
             preference=preference_data.preference,
-            current_date=date.today(),
+            current_date=get_current_local_date(),
         )
 
         return preference

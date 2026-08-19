@@ -29,7 +29,7 @@ def session_fixture():
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         # Create admin
-        admin = Admin(username="admin", password_hash=hash_password("admin123"))
+        admin = Admin(username="admin", password_hash=hash_password("admin123"), is_approved=True)
         session.add(admin)
         session.commit()
         yield session

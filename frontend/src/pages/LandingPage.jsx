@@ -31,7 +31,7 @@ export const LandingPage = () => {
             </h1>
 
             <p className="hero-subtitle">
-              Bhojanalay connects hostel students and mess management. Submit your weekly meal preferences every weekend to help your college prepare precise quantities and reduce food waste.
+              Gita-Bhojanalay connects hostel students and mess management. Submit your weekly meal preferences every weekend to help your college prepare precise quantities and reduce food waste.
             </p>
 
             <div className="hero-actions">
@@ -98,7 +98,7 @@ export const LandingPage = () => {
         <div className="container">
           <div style={{ marginBottom: '3rem', textAlign: 'center' }}>
             <span className="badge badge-mint" style={{ marginBottom: '0.75rem' }}>Simple 3-Step Process</span>
-            <h2>How Bhojanalay Works</h2>
+            <h2>How Gita-Bhojanalay Works</h2>
           </div>
 
           <div className="grid-3">

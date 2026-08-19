@@ -3,7 +3,7 @@
 # Pydantic schemas for authentication-related API requests and responses.
 # ===============================================================================
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class StudentLoginRequest(BaseModel):
@@ -12,7 +12,7 @@ class StudentLoginRequest(BaseModel):
     """
 
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=1, description="Student password")
 
 
 class StudentForgotPasswordRequest(BaseModel):
@@ -21,8 +21,8 @@ class StudentForgotPasswordRequest(BaseModel):
     """
 
     email: EmailStr
-    identifier: str  # Roll or Phone number for identity verification
-    new_password: str
+    identifier: str | None = Field(default=None, description="Optional roll or phone number for identity verification")
+    new_password: str = Field(..., min_length=8, max_length=100, description="New password (minimum 8 characters)")
 
 
 class AdminLoginRequest(BaseModel):
@@ -30,8 +30,8 @@ class AdminLoginRequest(BaseModel):
     Request schema for administrator login.
     """
 
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50, description="Admin username")
+    password: str = Field(..., min_length=1, description="Admin password")
 
 
 class TokenResponse(BaseModel):

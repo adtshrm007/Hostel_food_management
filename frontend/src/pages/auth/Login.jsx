@@ -70,7 +70,7 @@ export const Login = () => {
             Welcome Back
           </h2>
           <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.92rem' }}>
-            Access your Bhojanalay food management account
+            Access your Gita-Bhojanalay food management account
           </p>
         </div>
 

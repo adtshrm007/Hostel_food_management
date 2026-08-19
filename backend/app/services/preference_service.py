@@ -341,28 +341,28 @@ def submit_weekly_preferences(
         current_date=current_date,
     )
 
-    # Process each preference.
+    # High-Performance Batch Optimization for 5,000 Concurrent Users:
+    # 1. Fetch all existing preferences for this student and week in 1 single SELECT query.
+    existing_records = db.exec(
+        select(Preference).where(
+            Preference.student_id == student_id,
+            Preference.week_start_date == week_start,
+        )
+    ).all()
+
+    existing_map: dict[tuple[date, str], Preference] = {
+        (p.meal_date, p.meal_type): p for p in existing_records
+    }
 
     saved_preferences: list[Preference] = []
 
     for item in preferences:
-
-        existing_preference = db.exec(
-            select(Preference).where(
-                Preference.student_id == student_id,
-                Preference.week_start_date == week_start,
-                Preference.meal_date == item.meal_date,
-                Preference.meal_type == item.meal_type,
-            )
-        ).first()
+        slot_key = (item.meal_date, item.meal_type)
+        existing_preference = existing_map.get(slot_key)
 
         # Existing preference.
-
         if existing_preference:
-
-            # An administrator has already overridden this slot.
-            #
-            # Student submission cannot overwrite an admin decision.
+            # Student submission cannot overwrite an admin override.
             if existing_preference.updated_by is not None:
                 raise ValueError(
                     f"{item.meal_date} {item.meal_type} "
@@ -370,15 +370,11 @@ def submit_weekly_preferences(
                 )
 
             existing_preference.preference = item.preference
-
-            saved_preferences.append(
-                existing_preference
-            )
+            db.add(existing_preference)
+            saved_preferences.append(existing_preference)
 
         # New preference.
-
         else:
-
             new_preference = Preference(
                 student_id=student_id,
                 week_start_date=week_start,
@@ -388,25 +384,15 @@ def submit_weekly_preferences(
                 updated_by=None,
                 updated_at=None,
             )
-
             db.add(new_preference)
+            saved_preferences.append(new_preference)
 
-            saved_preferences.append(
-                new_preference
-            )
-
-    # Commit all 14 changes together.
-
+    # Commit all 14 changes together in 1 atomic transaction.
     try:
         db.commit()
-
     except Exception:
         db.rollback()
         raise
-
-    # Refresh records so generated database fields are available.
-    for preference in saved_preferences:
-        db.refresh(preference)
 
     return saved_preferences
 

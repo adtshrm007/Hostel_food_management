@@ -49,75 +49,88 @@
 #       the business rule.
 # ===============================================================================
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+# Indian Standard Time (IST) timezone offset (UTC+05:30) for consistent hostel local date resolution
+IST_TIMEZONE = timezone(timedelta(hours=5, minutes=30))
 
 
-def is_selection_open(current_date: date) -> bool:
+def get_current_local_date() -> date:
+    """
+    Get the current calendar date in the application's local timezone (IST UTC+5:30).
+    Prevents server UTC hosting mismatch where Saturday/Sunday windows close early or late.
+    """
+    return datetime.now(IST_TIMEZONE).date()
+
+
+def get_current_local_datetime() -> datetime:
+    """
+    Get current timezone-aware datetime in IST.
+    """
+    return datetime.now(IST_TIMEZONE)
+
+
+def is_selection_open(current_date: date | None = None) -> bool:
     """
     Determine whether the student preference selection window is open.
 
-    The selection window is open only on Saturday and Sunday.
-
-    Args:
-        current_date: Date on which the check is performed.
-
-    Returns:
-        bool: True if the current date is Saturday or Sunday,
-        otherwise False.
+    The selection window is open only on Saturday (5) and Sunday (6).
     """
+    if current_date is None:
+        current_date = get_current_local_date()
 
     return current_date.weekday() in (5, 6)
 
 
-def get_upcoming_week_start(current_date: date) -> date:
+def get_upcoming_week_start(current_date: date | None = None) -> date:
     """
-    Calculate the Monday of the upcoming week.
-
-    The upcoming week always starts on Monday.
-
-    Args:
-        current_date: Current date used to calculate the upcoming week.
-
-    Returns:
-        date: Monday of the upcoming week.
+    Calculate the Monday of the upcoming week for selection (next Monday).
+    If current_date is Saturday (5) or Sunday (6), returns the immediately following Monday.
+    If current_date is Monday-Friday (0-4), returns the next upcoming Monday.
     """
+    if current_date is None:
+        current_date = get_current_local_date()
 
     days_until_monday = 7 - current_date.weekday()
-
     return current_date + timedelta(days=days_until_monday)
 
 
-def get_upcoming_week_end(current_date: date) -> date:
+def get_target_week_start(current_date: date | None = None) -> date:
+    """
+    Get the relevant Monday for viewing preferences:
+    - On Saturday/Sunday: Returns the upcoming Monday.
+    - On Monday-Friday: Returns the active current week's Monday.
+    """
+    if current_date is None:
+        current_date = get_current_local_date()
+
+    if is_selection_open(current_date):
+        return get_upcoming_week_start(current_date)
+    
+    # Monday to Friday: Active current week Monday
+    return current_date - timedelta(days=current_date.weekday())
+
+
+def get_upcoming_week_end(current_date: date | None = None) -> date:
     """
     Calculate the Sunday of the upcoming week.
-
-    Args:
-        current_date: Current date used to calculate the upcoming week.
-
-    Returns:
-        date: Sunday of the upcoming week.
     """
+    if current_date is None:
+        current_date = get_current_local_date()
 
     week_start = get_upcoming_week_start(current_date)
-
     return week_start + timedelta(days=6)
 
 
 def is_date_in_upcoming_week(
     meal_date: date,
-    current_date: date
+    current_date: date | None = None
 ) -> bool:
     """
     Determine whether a meal date belongs to the upcoming week.
-
-    Args:
-        meal_date: Date for which membership is being checked.
-        current_date: Current date used to determine the upcoming week.
-
-    Returns:
-        bool: True if meal_date falls between the upcoming Monday and
-        Sunday, inclusive. Otherwise False.
     """
+    if current_date is None:
+        current_date = get_current_local_date()
 
     week_start = get_upcoming_week_start(current_date)
     week_end = get_upcoming_week_end(current_date)

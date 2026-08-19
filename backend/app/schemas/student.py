@@ -38,7 +38,7 @@
 #       Uses StudentResponse for student profile responses.
 # ===============================================================================
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class StudentBase(BaseModel):
@@ -46,11 +46,18 @@ class StudentBase(BaseModel):
     Common public fields shared by student-related schemas.
     """
 
-    name: str
-    roll: str
-    phone: str
-    hostel: str
+    name: str = Field(..., min_length=2, max_length=100, description="Student full name")
+    roll: str = Field(..., min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$", description="Unique student roll number")
+    phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$", description="Valid phone number (10 to 15 digits)")
+    hostel: str = Field(..., min_length=2, max_length=50, description="Hostel building or block name")
     email: EmailStr
+
+    @field_validator("name", "roll", "phone", "hostel", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 class StudentCreate(StudentBase):
@@ -61,7 +68,7 @@ class StudentCreate(StudentBase):
     It must be hashed before being stored in the database.
     """
 
-    password: str
+    password: str = Field(..., min_length=8, max_length=100, description="Password (minimum 8 characters)")
 
 
 class StudentResponse(StudentBase):

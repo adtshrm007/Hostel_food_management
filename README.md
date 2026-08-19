@@ -1,7 +1,7 @@
 <!--
 ===============================================================================
 FILE PURPOSE:
-Root README for the Bhojanalay Hostel Food Management System.
+Root README for the Gita-Bhojanalay Hostel Food Management System.
 Provides high-level project overview, system architecture description, setup instructions,
 and links to frontend, backend, and documentation resources.
 

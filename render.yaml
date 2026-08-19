@@ -1,0 +1,31 @@
+# ===============================================================================
+# FILE PURPOSE:
+# Render.com deployment blueprint for the Gita-Bhojanalay backend API.
+# Defines the web service, environment variables, and build/start commands.
+#
+# HOW TO USE:
+# 1. Push this file to your GitHub repository root.
+# 2. On Render Dashboard, click "New" > "Blueprint" and connect your repo.
+# 3. Render will auto-detect this file and configure the service.
+# 4. Set DATABASE_URL and SECRET_KEY in the Render Environment tab.
+# ===============================================================================
+
+services:
+  - type: web
+    name: gita-bhojanalay-api
+    runtime: python
+    region: singapore  # closest to India
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # Set manually in Render dashboard (Neon connection string)
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates a secure random string
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXP
+        value: 30
+      - key: PYTHON_VERSION
+        value: 3.13.9

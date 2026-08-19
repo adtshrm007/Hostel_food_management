@@ -25,6 +25,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.routers import (
     auth,
     student,
@@ -35,7 +36,7 @@ from app.routers import (
 
 
 app = FastAPI(
-    title="Hostel Food Management API",
+    title="Gita-Bhojanalay API",
     description=(
         "Backend API for managing hostel students, weekly food menus, "
         "food preferences, and administrator overrides."
@@ -49,11 +50,23 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# SECURITY HEADERS MIDDLEWARE
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 # ROUTERS
@@ -103,5 +116,5 @@ def root():
     """
 
     return {
-        "message": "Hostel Food Management API is running"
+        "message": "Gita-Bhojanalay API is running"
     }

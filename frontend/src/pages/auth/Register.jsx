@@ -100,7 +100,7 @@ export const Register = () => {
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <span className="badge badge-mint" style={{ marginBottom: '0.5rem' }}>Bhojanalay Account Registration</span>
+          <span className="badge badge-mint" style={{ marginBottom: '0.5rem' }}>Gita-Bhojanalay Account Registration</span>
           <h2 style={{ color: 'var(--color-navy)', fontSize: '1.8rem', marginBottom: '0.4rem' }}>
             Create New Account
           </h2>

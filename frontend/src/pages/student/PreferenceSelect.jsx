@@ -58,7 +58,14 @@ export const PreferenceSelect = () => {
   };
 
   const calculateSelectedCount = () => {
-    return Object.keys(selections).length;
+    let count = 0;
+    weekDays.forEach((day) => {
+      ['lunch', 'dinner'].forEach((mealType) => {
+        const key = `${day.dateStr}_${mealType}`;
+        if (selections[key]) count++;
+      });
+    });
+    return count;
   };
 
   const handleSubmitAll = async () => {

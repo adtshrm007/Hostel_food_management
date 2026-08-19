@@ -74,7 +74,7 @@ export const Navbar = () => {
                 lineHeight: 1.1,
                 letterSpacing: '-0.01em',
               }}>
-                Bhojanalay<span style={{ color: 'var(--color-coral)' }}>.</span>
+                Gita-Bhojanalay<span style={{ color: 'var(--color-coral)' }}>.</span>
               </div>
               <div style={{
                 fontSize: '0.72rem',

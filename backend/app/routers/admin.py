@@ -35,7 +35,7 @@
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
 from app.core.permissions import require_admin
@@ -57,6 +57,21 @@ from app.utils.date_utils import get_upcoming_week_start
 router = APIRouter()
 
 
+# ADMIN PROFILE
+
+@router.get(
+    "/me",
+    response_model=AdminResponse,
+)
+def get_my_admin_profile(
+    current_admin: Admin = Depends(require_admin),
+):
+    """
+    Retrieve the profile of the currently authenticated administrator.
+    """
+    return current_admin
+
+
 # STUDENT RECORDS
 
 @router.get(
@@ -66,22 +81,13 @@ router = APIRouter()
 def list_students(
     search: str | None = None,
     hostel: str | None = None,
+    skip: int = Query(0, ge=0, description="Number of student records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum student records to return"),
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve student records for the administrator.
-
-    Optional filters:
-        search:
-            Searches student name, roll number, email, or phone.
-
-        hostel:
-            Filters students belonging to a specific hostel.
-
-    Returns:
-        list[StudentResponse]:
-            Matching student records.
+    Retrieve student records for the administrator with optional search, hostel filter, and pagination.
     """
 
     if search is not None or hostel is not None:
@@ -89,9 +95,11 @@ def list_students(
             db=db,
             search=search,
             hostel=hostel,
+            skip=skip,
+            limit=limit,
         )
 
-    return get_all_students(db)
+    return get_all_students(db=db, skip=skip, limit=limit)
 
 
 # SINGLE STUDENT

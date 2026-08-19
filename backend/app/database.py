@@ -12,10 +12,23 @@
 from sqlmodel import SQLModel,Session,create_engine
 from app.config import settings
 
-# Engine
-engine=create_engine(
+# Connection pool configuration optimized for PostgreSQL / Neon DB
+engine_kwargs = {
+    "echo": False,
+}
+
+# Apply pool settings for PostgreSQL
+if not settings.DATABASE_URL.startswith("sqlite"):
+    engine_kwargs.update({
+        "pool_size": 20,
+        "max_overflow": 40,
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    })
+
+engine = create_engine(
     settings.DATABASE_URL,
-    echo=True
+    **engine_kwargs
 )
 
 def create_db_and_tables():

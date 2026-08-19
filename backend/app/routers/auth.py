@@ -6,6 +6,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
+from app.core.rate_limiter import rate_limit_auth_requests
 from app.database import get_db
 from app.schemas.auth import (
     AdminLoginRequest,
@@ -31,6 +32,7 @@ router = APIRouter()
     "/student/register",
     response_model=StudentResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_auth_requests)],
 )
 def student_register(
     student_data: StudentCreate,
@@ -56,6 +58,7 @@ def student_register(
 @router.post(
     "/student/forgot-password",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit_auth_requests)],
 )
 def student_forgot_password(
     data: StudentForgotPasswordRequest,
@@ -82,6 +85,7 @@ def student_forgot_password(
 @router.post(
     "/student/login",
     response_model=TokenResponse,
+    dependencies=[Depends(rate_limit_auth_requests)],
 )
 def student_login(
     login_data: StudentLoginRequest,
@@ -111,6 +115,7 @@ def student_login(
     "/admin/register",
     response_model=AdminResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_auth_requests)],
 )
 def admin_register(
     admin_data: AdminCreate,
@@ -136,6 +141,7 @@ def admin_register(
 @router.post(
     "/admin/login",
     response_model=TokenResponse,
+    dependencies=[Depends(rate_limit_auth_requests)],
 )
 def admin_login(
     login_data: AdminLoginRequest,

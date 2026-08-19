@@ -67,11 +67,11 @@ def register_student(
 def reset_student_password(
     db: Session,
     email: str,
-    identifier: str,
+    identifier: str | None,
     new_password: str,
 ) -> None:
     """
-    Reset a student's password after verifying email and roll/phone number.
+    Reset a student's password after verifying email and optional identifier.
     """
 
     student = db.exec(
@@ -81,12 +81,13 @@ def reset_student_password(
     if not student:
         raise ValueError("No student account found with this email address.")
 
-    clean_identifier = identifier.strip().lower()
-    student_roll = (student.roll or "").strip().lower()
-    student_phone = (student.phone or "").strip().lower()
+    if identifier and identifier.strip():
+        clean_identifier = identifier.strip().lower()
+        student_roll = (student.roll or "").strip().lower()
+        student_phone = (student.phone or "").strip().lower()
 
-    if clean_identifier != student_roll and clean_identifier != student_phone:
-        raise ValueError("Verification failed: Roll number or phone number does not match record.")
+        if clean_identifier != student_roll and clean_identifier != student_phone:
+            raise ValueError("Verification failed: Roll number or phone number does not match record.")
 
     student.password_hash = hash_password(new_password)
     db.add(student)
@@ -129,7 +130,8 @@ def register_admin(
     password: str,
 ) -> Admin:
     """
-    Register a new admin with is_approved=False.
+    Register a new admin. Auto-approves the first admin in the database.
+    Subsequent admins are created with is_approved=False pending existing admin approval.
     """
 
     existing = db.exec(
@@ -139,10 +141,13 @@ def register_admin(
     if existing:
         raise ValueError("Admin username already exists")
 
+    # Auto-approve if this is the first administrator account created
+    has_any_admin = db.exec(select(Admin)).first() is not None
+
     admin = Admin(
         username=username,
         password_hash=hash_password(password),
-        is_approved=False,
+        is_approved=not has_any_admin,
     )
 
     db.add(admin)

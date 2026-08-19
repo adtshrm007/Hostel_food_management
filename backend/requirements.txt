@@ -9,16 +9,27 @@
 # - Connected to: backend/alembic/ (Requires Alembic dependency)
 # - Connected to: backend/tests/ (Requires Pytest dependency)
 # ===============================================================================
+
+# --- Core Framework ---
 fastapi
 uvicorn[standard]
+gunicorn
+
+# --- Database & ORM ---
 sqlmodel
+alembic
+psycopg2-binary
+
+# --- Authentication & Security ---
 python-jose[cryptography]
 passlib[bcrypt]
 bcrypt<5
 python-multipart
+
+# --- Validation & Settings ---
 pydantic-settings
-alembic
-psycopg2-binary
 email-validator
+
+# --- Testing ---
 pytest
 httpx

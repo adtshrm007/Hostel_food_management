@@ -1,7 +1,7 @@
 <!--
 ===============================================================================
 FILE PURPOSE:
-Database Schema Specification Document for Bhojanalay.
+Database Schema Specification Document for Gita-Bhojanalay.
 Contains detailed technical descriptions of database tables, column data types,
 primary/foreign key relationships, indexing strategies, and Saturday-Sunday selection constraints.
 

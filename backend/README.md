@@ -1,7 +1,7 @@
 <!--
 ===============================================================================
 FILE PURPOSE:
-Backend Documentation for the Bhojanalay FastAPI service.
+Backend Documentation for the Gita-Bhojanalay FastAPI service.
 Explains local backend server deployment, environment variable configuration,
 database migration procedures with Alembic, API endpoint docs (Swagger/ReDoc), and testing.
 

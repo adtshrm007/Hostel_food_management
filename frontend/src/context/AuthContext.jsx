@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import authApi from '../api/authApi';
 import studentApi from '../api/studentApi';
+import adminApi from '../api/adminApi';
 
 export const AuthContext = createContext(null);
 
@@ -33,8 +34,8 @@ export const AuthProvider = ({ children }) => {
         const studentProfile = await studentApi.getProfile();
         setUser({ ...studentProfile, role: 'student' });
       } else if (userRole === 'admin') {
-        const payload = decodeToken(jwtToken);
-        setUser({ admin_id: payload?.sub, role: 'admin', username: 'admin' });
+        const adminProfile = await adminApi.getMe();
+        setUser({ ...adminProfile, role: 'admin' });
       }
     } catch (err) {
       console.error('Failed to fetch current user profile:', err);

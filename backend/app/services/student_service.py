@@ -113,18 +113,22 @@ def get_student_by_roll(
 
 def get_all_students(
     db: Session,
+    skip: int = 0,
+    limit: int = 50,
 ) -> list[Student]:
     """
-    Retrieve all registered student records.
+    Retrieve registered student records with pagination.
 
     Args:
         db: Active database session.
+        skip: Number of records to skip.
+        limit: Maximum number of records to return.
 
     Returns:
-        list[Student]: All student records.
+        list[Student]: Paginated student records.
     """
 
-    statement = select(Student).order_by(Student.student_id)
+    statement = select(Student).order_by(Student.student_id).offset(skip).limit(limit)
     return list(db.exec(statement).all())
 
 
@@ -132,14 +136,18 @@ def search_students(
     db: Session,
     search: str | None = None,
     hostel: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
 ) -> list[Student]:
     """
-    Search student records by search query and/or hostel filter.
+    Search student records by search query and/or hostel filter with pagination.
 
     Args:
         db: Active database session.
         search: Optional search term matching name, roll, email, or phone.
         hostel: Optional hostel name filter.
+        skip: Number of records to skip.
+        limit: Maximum number of records to return.
 
     Returns:
         list[Student]: Matching student records.
@@ -159,5 +167,5 @@ def search_students(
             | (Student.phone.ilike(search_pattern))
         )
 
-    statement = statement.order_by(Student.student_id)
+    statement = statement.order_by(Student.student_id).offset(skip).limit(limit)
     return list(db.exec(statement).all())
