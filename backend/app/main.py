@@ -45,7 +45,6 @@ app = FastAPI(
 )
 
 
-
 # CORS
 
 app.add_middleware(
@@ -55,6 +54,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health
+@app.get(
+        "/api/health",
+        tags=["Health"],
+    )
+def root():
+    """
+    Basic API health endpoint.
+    """
+    return {
+        "message": "Gita-Bhojanalay API is running"
+    }
 
 
 # SECURITY HEADERS MIDDLEWARE
@@ -126,15 +138,3 @@ if os.path.exists(frontend_dist):
         # For all other SPA client-side routes (e.g. /student/menu, /admin/dashboard, /login), return index.html
         index_file = os.path.join(frontend_dist, "index.html")
         return FileResponse(index_file)
-else:
-    @app.get(
-        "/",
-        tags=["Health"],
-    )
-    def root():
-        """
-        Basic API health endpoint.
-        """
-        return {
-            "message": "Gita-Bhojanalay API is running"
-        }
