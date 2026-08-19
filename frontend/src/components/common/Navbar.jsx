@@ -51,20 +51,19 @@ export const Navbar = () => {
         <div className="navbar-header">
           {/* Brand Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--color-green)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-white)',
-              boxShadow: '0 4px 12px rgba(46, 155, 98, 0.4)',
-              flexShrink: 0,
-            }}>
-              <UtensilsCrossed size={24} />
-            </div>
+            <img
+              src="/images.jpeg"
+              alt="Gita-Bhojanalay Logo"
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                objectFit: 'cover',
+                border: '2px solid var(--color-mint)',
+                boxShadow: '0 4px 12px rgba(46, 155, 98, 0.4)',
+                flexShrink: 0,
+              }}
+            />
             <div>
               <div style={{
                 fontFamily: 'var(--font-heading)',

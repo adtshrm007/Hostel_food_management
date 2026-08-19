@@ -21,9 +21,23 @@ export const LandingPage = () => {
 
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: '780px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <span className="badge badge-mint" style={{ width: 'fit-content', padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
-              <Leaf size={16} /> Eco-Smart Hostel Food Platform
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <img
+                src="/images.jpeg"
+                alt="Gita-Bhojanalay Logo"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '14px',
+                  objectFit: 'cover',
+                  border: '2px solid var(--color-mint)',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                }}
+              />
+              <span className="badge badge-mint" style={{ width: 'fit-content', padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
+                <Leaf size={16} /> Eco-Smart Hostel Food Platform
+              </span>
+            </div>
 
             <h1 className="hero-title">
               Smart Meal Choices.<br />

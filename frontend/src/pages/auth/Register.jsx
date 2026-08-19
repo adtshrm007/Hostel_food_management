@@ -100,6 +100,20 @@ export const Register = () => {
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <img
+            src="/images.jpeg"
+            alt="Gita-Bhojanalay Logo"
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              objectFit: 'cover',
+              border: '2px solid var(--color-green)',
+              boxShadow: '0 4px 12px rgba(46, 155, 98, 0.2)',
+              marginBottom: '0.75rem',
+            }}
+          />
+          <br />
           <span className="badge badge-mint" style={{ marginBottom: '0.5rem' }}>Gita-Bhojanalay Account Registration</span>
           <h2 style={{ color: 'var(--color-navy)', fontSize: '1.8rem', marginBottom: '0.4rem' }}>
             Create New Account

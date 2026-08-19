@@ -66,6 +66,19 @@ export const Login = () => {
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <img
+            src="/images.jpeg"
+            alt="Gita-Bhojanalay Logo"
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              objectFit: 'cover',
+              border: '2px solid var(--color-green)',
+              boxShadow: '0 4px 12px rgba(46, 155, 98, 0.2)',
+              marginBottom: '0.75rem',
+            }}
+          />
           <h2 style={{ color: 'var(--color-navy)', fontSize: '1.8rem', marginBottom: '0.4rem' }}>
             Welcome Back
           </h2>
