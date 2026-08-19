@@ -105,14 +105,17 @@ if os.path.exists(frontend_dist):
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        # Exclude API endpoints from static fallback
-        if full_path.startswith("api/") or full_path.startswith("auth") or full_path.startswith("student") or full_path.startswith("admin") or full_path.startswith("menu") or full_path.startswith("preference"):
-            return {"message": "Gita-Bhojanalay API is running"}
+        # Allow non-existent /api/ routes to return 404 rather than HTML
+        if full_path.startswith("api/"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="API endpoint not found")
         
+        # Check if the requested path corresponds to a static file (e.g. /images.jpeg, /favicon.ico)
         file_path = os.path.join(frontend_dist, full_path)
         if full_path and os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)
         
+        # For all other SPA client-side routes (e.g. /student/menu, /admin/dashboard, /login), return index.html
         index_file = os.path.join(frontend_dist, "index.html")
         return FileResponse(index_file)
 else:
