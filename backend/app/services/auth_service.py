@@ -121,7 +121,8 @@ def authenticate_student(
         "role": "student",
     }
 
-    return create_access_token(token_data)
+    from datetime import timedelta
+    return create_access_token(token_data, expires_delta=timedelta(hours=1))
 
 
 def register_admin(

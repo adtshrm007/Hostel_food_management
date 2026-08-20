@@ -202,6 +202,32 @@ def get_student_week_preferences(
     return list(db.exec(statement).all())
 
 
+def get_student_preferences_for_date(
+    db: Session,
+    student_id: int,
+    target_date: date,
+) -> list[Preference]:
+    """
+    Retrieve all stored preferences for a student for a specific date (e.g. today).
+    
+    Args:
+        db: Database session.
+        student_id: ID of the student.
+        target_date: Date to fetch preferences for.
+        
+    Returns:
+        list[Preference]:
+            All stored preferences for the student on that date (should be up to 2: lunch, dinner).
+    """
+
+    statement = select(Preference).where(
+        Preference.student_id == student_id,
+        Preference.meal_date == target_date,
+    )
+
+    return list(db.exec(statement).all())
+
+
 # WEEKLY SUBMISSION VALIDATION
 
 def validate_weekly_submission(

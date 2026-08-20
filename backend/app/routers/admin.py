@@ -176,6 +176,78 @@ def get_student_preferences(
     return list(db.exec(statement).all())
 
 
+# DELETE SINGLE STUDENT PREFERENCE
+
+@router.delete(
+    "/students/{student_id}/preferences/{preference_id}",
+    status_code=status.HTTP_200_OK,
+)
+def delete_single_preference(
+    student_id: int,
+    preference_id: int,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a single preference record for a student.
+    """
+
+    student = get_student_by_id(db=db, student_id=student_id)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    preference = db.get(Preference, preference_id)
+    if preference is None or preference.student_id != student_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Preference not found for this student",
+        )
+
+    db.delete(preference)
+    db.commit()
+
+    return {"message": "Preference deleted successfully."}
+
+
+# DELETE ALL STUDENT PREFERENCES
+
+@router.delete(
+    "/students/{student_id}/preferences",
+    status_code=status.HTTP_200_OK,
+)
+def delete_all_student_preferences(
+    student_id: int,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete all preference records for a student.
+    """
+
+    student = get_student_by_id(db=db, student_id=student_id)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    statement = select(Preference).where(
+        Preference.student_id == student_id,
+    )
+    all_prefs = db.exec(statement).all()
+    count = len(all_prefs)
+
+    for pref in all_prefs:
+        db.delete(pref)
+
+    db.commit()
+
+    return {"message": f"Deleted {count} preference(s) for student."}
+
+
 # DAILY MEAL SUMMARY (VEG / NON-VEG COUNTS)
 
 @router.get("/summary")

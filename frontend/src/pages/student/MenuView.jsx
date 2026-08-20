@@ -56,9 +56,14 @@ export const MenuView = () => {
           </p>
         </div>
 
-        <Link to="/student/preference" className="btn btn-coral btn-lg" style={{ width: 'fit-content' }}>
-          <Calendar size={20} /> Set My Preferences <ArrowRight size={18} />
-        </Link>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <Link to="/student/today" className="btn btn-outline-light" style={{ width: 'fit-content' }}>
+            <Calendar size={20} /> See Today's Preference
+          </Link>
+          <Link to="/student/preference" className="btn btn-coral btn-lg" style={{ width: 'fit-content' }}>
+            <Calendar size={20} /> Set My Preferences <ArrowRight size={18} />
+          </Link>
+        </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}

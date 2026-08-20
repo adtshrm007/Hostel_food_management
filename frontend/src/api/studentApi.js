@@ -17,6 +17,11 @@ export const studentApi = {
     });
     return response.data;
   },
+
+  getTodayPreferences: async () => {
+    const response = await axiosInstance.get('/preference/today');
+    return response.data;
+  },
 };
 
 export default studentApi;

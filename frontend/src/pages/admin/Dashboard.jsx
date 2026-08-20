@@ -4,6 +4,8 @@ import adminApi from '../../api/adminApi';
 import StudentTable from '../../components/admin/StudentTable';
 import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert } from 'lucide-react';
 
+import { toLocalDateStr } from '../../utils/dateHelpers';
+
 // Helper to generate dates from Today to Next Sunday
 const getDatesFromTodayToNextSunday = () => {
   const dates = [];
@@ -22,7 +24,7 @@ const getDatesFromTodayToNextSunday = () => {
   for (let i = 0; i <= daysUntilNextSunday; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(d);
     const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
     const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 

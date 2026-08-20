@@ -78,12 +78,12 @@ def verify_password(
     )
 
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Create a signed JWT access token.
 
-    The token expiration time is determined by ACCESS_TOKEN_EXP
-    from the application settings.
+    The token expiration time is determined by expires_delta if provided,
+    otherwise by ACCESS_TOKEN_EXP from the application settings.
 
     Returns:
         str: Encoded JWT access token.
@@ -92,9 +92,12 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
 
     now = datetime.now(timezone.utc)
-    expire = now + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXP
-    )
+    if expires_delta:
+        expire = now + expires_delta
+    else:
+        expire = now + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXP
+        )
 
     to_encode.update({
         "iat": now,

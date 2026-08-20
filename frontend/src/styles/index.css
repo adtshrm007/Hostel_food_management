@@ -218,6 +218,17 @@ a:hover {
   color: var(--color-cream);
 }
 
+.btn-outline-light {
+  background-color: transparent;
+  border-color: var(--color-cream);
+  color: var(--color-cream);
+}
+
+.btn-outline-light:hover:not(:disabled) {
+  background-color: var(--color-cream);
+  color: var(--color-navy);
+}
+
 .btn-ghost {
   background-color: transparent;
   color: var(--color-navy);

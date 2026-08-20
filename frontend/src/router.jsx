@@ -19,6 +19,7 @@ const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const StudentRecords = lazy(() => import('./pages/admin/StudentRecords'));
 const EditPreference = lazy(() => import('./pages/admin/EditPreference'));
 const ManageStudents = lazy(() => import('./pages/admin/ManageStudents'));
+const TodayPreference = lazy(() => import('./pages/student/TodayPreference'));
 
 const MainLayout = () => {
   return (
@@ -71,6 +72,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRole="student">
                 <PreferenceSelect />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'today',
+            element: (
+              <ProtectedRoute allowedRole="student">
+                <TodayPreference />
               </ProtectedRoute>
             ),
           },

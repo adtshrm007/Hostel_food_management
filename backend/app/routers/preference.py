@@ -144,6 +144,27 @@ def get_my_weekly_preferences(
     )
 
 
+@router.get(
+    "/today",
+    response_model=list[PreferenceResponse],
+)
+def get_my_today_preferences(
+    current_student: Student = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve the authenticated student's preferences for the current day.
+    """
+    from app.services.preference_service import get_student_preferences_for_date
+
+    today = get_current_local_date()
+
+    return get_student_preferences_for_date(
+        db=db,
+        student_id=current_student.student_id,
+        target_date=today,
+    )
+
 # ADMIN ENDPOINT
 
 @router.put(

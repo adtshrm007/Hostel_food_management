@@ -72,6 +72,16 @@ export const adminApi = {
     const response = await axiosInstance.post('/admin/students/bulk-delete', { student_ids: studentIds, admin_password: adminPassword });
     return response.data;
   },
+
+  deletePreference: async (studentId, preferenceId) => {
+    const response = await axiosInstance.delete(`/admin/students/${studentId}/preferences/${preferenceId}`);
+    return response.data;
+  },
+
+  clearAllPreferences: async (studentId) => {
+    const response = await axiosInstance.delete(`/admin/students/${studentId}/preferences`);
+    return response.data;
+  },
 };
 
 export default adminApi;
