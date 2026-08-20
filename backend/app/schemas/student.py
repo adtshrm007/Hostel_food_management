@@ -79,3 +79,39 @@ class StudentResponse(StudentBase):
     """
 
     student_id: int
+
+
+class StudentUpdate(BaseModel):
+    """
+    Request schema used when updating an existing student.
+    All fields are optional.
+    """
+
+    name: str | None = Field(None, min_length=2, max_length=100, description="Student full name")
+    roll: str | None = Field(None, min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$", description="Unique student roll number")
+    phone: str | None = Field(None, pattern=r"^\+?[0-9]{10,15}$", description="Valid phone number (10 to 15 digits)")
+    hostel: str | None = Field(None, min_length=2, max_length=50, description="Hostel building or block name")
+    email: EmailStr | None = Field(None, description="Student email address")
+
+    @field_validator("name", "roll", "phone", "hostel", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str | None) -> str | None:
+        if isinstance(v, str):
+            return v.strip()
+        return v
+
+
+class DeleteStudentRequest(BaseModel):
+    """
+    Request schema used when deleting a single student. Requires admin password re-verification.
+    """
+    admin_password: str = Field(..., min_length=1, description="Admin password re-verification")
+
+
+class BulkDeleteRequest(BaseModel):
+    """
+    Request schema used when bulk deleting students. Requires admin password re-verification.
+    """
+
+    student_ids: list[int]
+    admin_password: str = Field(..., min_length=1, description="Admin password re-verification")

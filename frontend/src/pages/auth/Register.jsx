@@ -102,8 +102,10 @@ export const Register = () => {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <img
-            src="/images.jpeg"
+            src="/logo.webp"
             alt="Gita-Bhojanalay Logo"
+            width="56"
+            height="56"
             style={{
               width: '56px',
               height: '56px',
@@ -200,10 +202,11 @@ export const Register = () => {
         {activeTab === 'student' ? (
           <form onSubmit={handleSubmitStudent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Full Name</label>
+              <label htmlFor="reg-student-name" className="form-label">Full Name</label>
               <div style={{ position: 'relative' }}>
                 <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
+                  id="reg-student-name"
                   type="text"
                   name="name"
                   className="form-input"
@@ -218,10 +221,11 @@ export const Register = () => {
 
             <div className="grid-2 form-grid-2" style={{ gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Roll Number</label>
+                <label htmlFor="reg-student-roll" className="form-label">Roll Number</label>
                 <div style={{ position: 'relative' }}>
                   <Hash size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                   <input
+                    id="reg-student-roll"
                     type="text"
                     name="roll"
                     className="form-input"
@@ -235,10 +239,11 @@ export const Register = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Phone Number</label>
+                <label htmlFor="reg-student-phone" className="form-label">Phone Number</label>
                 <div style={{ position: 'relative' }}>
                   <Phone size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                   <input
+                    id="reg-student-phone"
                     type="text"
                     name="phone"
                     className="form-input"
@@ -254,10 +259,11 @@ export const Register = () => {
 
             <div className="grid-2 form-grid-2" style={{ gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Hostel Name</label>
+                <label htmlFor="reg-student-hostel" className="form-label">Hostel Name</label>
                 <div style={{ position: 'relative' }}>
                   <Building size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)', pointerEvents: 'none' }} />
                   <select
+                    id="reg-student-hostel"
                     name="hostel"
                     className="form-select"
                     style={{ paddingLeft: '2.5rem' }}
@@ -275,10 +281,11 @@ export const Register = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Student Email</label>
+                <label htmlFor="reg-student-email" className="form-label">Student Email</label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                   <input
+                    id="reg-student-email"
                     type="email"
                     name="email"
                     className="form-input"
@@ -293,10 +300,11 @@ export const Register = () => {
             </div>
 
             <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-              <label className="form-label">Create Password</label>
+              <label htmlFor="reg-student-password" className="form-label">Create Password</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
+                  id="reg-student-password"
                   type="password"
                   name="password"
                   className="form-input"
@@ -327,10 +335,11 @@ export const Register = () => {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Admin Username</label>
+              <label htmlFor="reg-admin-username" className="form-label">Admin Username</label>
               <div style={{ position: 'relative' }}>
                 <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
+                  id="reg-admin-username"
                   type="text"
                   name="username"
                   className="form-input"
@@ -344,10 +353,11 @@ export const Register = () => {
             </div>
 
             <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-              <label className="form-label">Admin Password</label>
+              <label htmlFor="reg-admin-password" className="form-label">Admin Password</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
+                  id="reg-admin-password"
                   type="password"
                   name="password"
                   className="form-input"

@@ -26,12 +26,16 @@ export const FilterBar = ({
       }}>
         {/* Search Query Input */}
         <div style={{ flex: '1 1 220px', position: 'relative', width: '100%' }}>
+          <label htmlFor="student-search-query" className="sr-only">Search by name, roll, email, or phone</label>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
           <input
+            id="student-search-query"
+            name="searchQuery"
             type="text"
             className="form-input"
             style={{ paddingLeft: '2.5rem' }}
             placeholder="Search by name, roll, email, or phone..."
+            aria-label="Search students by name, roll, email, or phone"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -39,10 +43,14 @@ export const FilterBar = ({
 
         {/* Hostel Filter Dropdown */}
         <div style={{ flex: '0 1 200px', position: 'relative', width: '100%', minWidth: '160px' }}>
+          <label htmlFor="hostel-filter-select" className="sr-only">Filter students by hostel</label>
           <Building size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)', pointerEvents: 'none' }} />
           <select
+            id="hostel-filter-select"
+            name="selectedHostel"
             className="form-select"
             style={{ paddingLeft: '2.5rem' }}
+            aria-label="Filter students by hostel"
             value={selectedHostel}
             onChange={(e) => setSelectedHostel(e.target.value)}
           >

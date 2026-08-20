@@ -187,8 +187,10 @@ export const EditPreference = () => {
 
           <form onSubmit={handleAdminOverride} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div className="form-group">
-              <label className="form-label">Select Meal Date</label>
+              <label htmlFor="override-meal-date-select" className="form-label">Select Meal Date</label>
               <select
+                id="override-meal-date-select"
+                name="mealDate"
                 className="form-select"
                 value={mealDate}
                 onChange={(e) => setMealDate(e.target.value)}

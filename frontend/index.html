@@ -2,8 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/images.jpeg" />
+    <link rel="icon" type="image/webp" href="/logo.webp" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gita-Bhojanalay — Smart Hostel Food & Sustainability Platform empowering students and hostel administration to eliminate food wastage." />
     <title>Gita-Bhojanalay — Smart Hostel Food & Sustainability Platform</title>
     
     <!-- Font Preconnect & Performance Preloads -->
@@ -12,7 +13,21 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
     
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Critical Script Module Preloads to flatten dependency waterfall -->
+    <link rel="modulepreload" href="/src/main.jsx" />
+    <link rel="modulepreload" href="/src/App.jsx" />
+    <link rel="modulepreload" href="/src/context/AuthContext.jsx" />
+    <link rel="modulepreload" href="/src/api/adminApi.js" />
+    <link rel="modulepreload" href="/src/api/axiosInstance.js" />
+    <link rel="modulepreload" href="/src/pages/admin/ManageStudents.jsx" />
+    <link rel="modulepreload" href="/src/pages/admin/Dashboard.jsx" />
+    
+    <!-- High Priority Image Preload for Instant Logo Render -->
+    <link rel="preload" as="image" href="/logo.webp" fetchpriority="high" type="image/webp" />
+    
+    <!-- Non-Render-Blocking Asynchronous Google Fonts Preload -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"></noscript>
   </head>
   <body>
     <div id="root"></div>

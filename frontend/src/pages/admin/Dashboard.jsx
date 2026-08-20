@@ -272,9 +272,14 @@ export const Dashboard = () => {
       {/* Directory Preview Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 style={{ color: 'var(--color-navy)' }}>Registered Students Directory</h3>
-        <Link to="/admin/records" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-green)' }}>
-          View Full Directory <ArrowRight size={16} />
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Link to="/admin/records" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-green)' }}>
+            View Full Directory <ArrowRight size={16} />
+          </Link>
+          <Link to="/admin/manage-students" className="btn btn-sm btn-coral">
+            <Users size={16} /> Manage Students
+          </Link>
+        </div>
       </div>
 
       <StudentTable students={students.slice(0, 5)} loading={loading} />

@@ -18,12 +18,13 @@ const PreferenceSelect = lazy(() => import('./pages/student/PreferenceSelect'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const StudentRecords = lazy(() => import('./pages/admin/StudentRecords'));
 const EditPreference = lazy(() => import('./pages/admin/EditPreference'));
+const ManageStudents = lazy(() => import('./pages/admin/ManageStudents'));
 
 const MainLayout = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar />
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, minHeight: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<Loader message="Loading page..." fullPage={true} />}>
           <Outlet />
         </Suspense>
@@ -99,6 +100,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute allowedRole="admin">
                 <EditPreference />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'manage-students',
+            element: (
+              <ProtectedRoute allowedRole="admin">
+                <ManageStudents />
               </ProtectedRoute>
             ),
           },

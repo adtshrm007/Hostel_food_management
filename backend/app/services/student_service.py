@@ -169,3 +169,105 @@ def search_students(
 
     statement = statement.order_by(Student.student_id).offset(skip).limit(limit)
     return list(db.exec(statement).all())
+
+
+from app.schemas.student import StudentUpdate
+
+def update_student(
+    db: Session,
+    student_id: int,
+    updates: StudentUpdate,
+) -> Student | None:
+    """
+    Update a student's profile details.
+    
+    Checks unique constraints on email, roll number, and phone.
+    """
+    student = db.get(Student, student_id)
+    if not student:
+        return None
+
+    update_data = updates.model_dump(exclude_unset=True)
+
+    if "roll" in update_data and update_data["roll"] != student.roll:
+        existing_roll = db.exec(
+            select(Student).where(
+                Student.roll == update_data["roll"],
+                Student.student_id != student_id
+            )
+        ).first()
+        if existing_roll:
+            raise ValueError("Roll number already registered")
+
+    if "phone" in update_data and update_data["phone"] != student.phone:
+        existing_phone = db.exec(
+            select(Student).where(
+                Student.phone == update_data["phone"],
+                Student.student_id != student_id
+            )
+        ).first()
+        if existing_phone:
+            raise ValueError("Phone number already registered")
+
+    if "email" in update_data and update_data["email"] != student.email:
+        existing_email = db.exec(
+            select(Student).where(
+                Student.email == update_data["email"],
+                Student.student_id != student_id
+            )
+        ).first()
+        if existing_email:
+            raise ValueError("Email already registered")
+
+    for key, value in update_data.items():
+        setattr(student, key, value)
+
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+def delete_student(db: Session, student_id: int) -> bool:
+    """
+    Permanently delete a student and their associated food preference data.
+    """
+    student = db.get(Student, student_id)
+    if not student:
+        return False
+
+    # Cascade delete preference records
+    from app.models.preference import Preference
+    pref_statement = select(Preference).where(Preference.student_id == student_id)
+    preferences = db.exec(pref_statement).all()
+    for pref in preferences:
+        db.delete(pref)
+
+    db.delete(student)
+    db.commit()
+    return True
+
+
+def delete_students_bulk(db: Session, student_ids: list[int]) -> int:
+    """
+    Permanently delete multiple students and their associated food preference data.
+    """
+    if not student_ids:
+        return 0
+
+    # Cascade delete preference records
+    from app.models.preference import Preference
+    pref_statement = select(Preference).where(Preference.student_id.in_(student_ids))
+    preferences = db.exec(pref_statement).all()
+    for pref in preferences:
+        db.delete(pref)
+
+    deleted_count = 0
+    for student_id in student_ids:
+        student = db.get(Student, student_id)
+        if student:
+            db.delete(student)
+            deleted_count += 1
+
+    db.commit()
+    return deleted_count

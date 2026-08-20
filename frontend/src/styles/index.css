@@ -145,6 +145,12 @@ a:hover {
   padding: 0 1.5rem;
 }
 
+.page-section {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+  min-height: calc(100vh - 160px);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -166,9 +172,10 @@ a:hover {
 }
 
 .btn-primary {
-  background-color: var(--color-green);
-  color: var(--color-white);
-  box-shadow: 0 4px 14px rgba(46, 155, 98, 0.3);
+  background-color: #1B6A3B;
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(27, 106, 59, 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -265,10 +272,24 @@ a:hover {
   letter-spacing: 0.04em;
 }
 
+/* Screen reader only utility for accessibility labels */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .badge-mint {
-  background-color: var(--color-mint);
-  color: var(--color-green);
-  border: 1px solid rgba(46, 155, 98, 0.2);
+  background-color: #E2F4E9;
+  color: #0C2336;
+  font-weight: 700;
+  border: 1px solid #2E9B62;
 }
 
 .badge-coral {
@@ -399,6 +420,17 @@ a:hover {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.spin-animation,
+.lucide-spin,
+.lucide-leaf,
+.lucide-heart,
+.spinner {
+  animation: spin 2s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .navbar-hamburger {
@@ -598,6 +630,8 @@ a:hover {
   flex-wrap: wrap;
   gap: 1.5rem;
   box-shadow: var(--shadow-md);
+  min-height: 136px;
+  contain: layout style;
 }
 
 /* Hero section on landing page */

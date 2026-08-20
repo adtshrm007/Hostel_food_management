@@ -67,8 +67,10 @@ export const Login = () => {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <img
-            src="/images.jpeg"
+            src="/logo.webp"
             alt="Gita-Bhojanalay Logo"
+            width="56"
+            height="56"
             style={{
               width: '56px',
               height: '56px',
@@ -154,10 +156,12 @@ export const Login = () => {
         <form onSubmit={handleSubmit}>
           {activeTab === 'student' ? (
             <div className="form-group">
-              <label className="form-label">Student Registered Email</label>
+              <label htmlFor="student-email-login" className="form-label">Student Registered Email</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
+                  id="student-email-login"
+                  name="email"
                   type="email"
                   className="form-input"
                   style={{ paddingLeft: '2.5rem' }}
@@ -170,10 +174,12 @@ export const Login = () => {
             </div>
           ) : (
             <div className="form-group">
-              <label className="form-label">Administrator Username</label>
+              <label htmlFor="admin-username-login" className="form-label">Administrator Username</label>
               <div style={{ position: 'relative' }}>
                 <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
+                  id="admin-username-login"
+                  name="username"
                   type="text"
                   className="form-input"
                   style={{ paddingLeft: '2.5rem' }}
@@ -188,7 +194,7 @@ export const Login = () => {
 
           <div className="form-group" style={{ marginBottom: '1.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label">Password</label>
+              <label htmlFor="user-password-login" className="form-label">Password</label>
               {activeTab === 'student' && (
                 <Link to="/forgot-password" style={{ fontSize: '0.82rem', color: 'var(--color-coral)', fontWeight: 600 }}>
                   Forgot Password?
@@ -198,6 +204,8 @@ export const Login = () => {
             <div style={{ position: 'relative', marginTop: '0.3rem' }}>
               <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
               <input
+                id="user-password-login"
+                name="password"
                 type="password"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}

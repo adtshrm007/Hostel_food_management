@@ -40,13 +40,17 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to fetch current user profile:', err);
       logout();
-    } finally {
-      setLoading(false);
     }
   };
 
+  // Optimistically resolve loading immediately if we have cached credentials,
+  // then validate against the server in the background. If the token is invalid/expired
+  // the fetchUserData error path calls logout() which clears state and redirects.
   useEffect(() => {
     if (token && role) {
+      // Immediately unblock page render — ProtectedRoute will render children now.
+      setLoading(false);
+      // Validate token in background; logout() handles redirect on failure.
       fetchUserData(token, role);
     } else {
       setLoading(false);

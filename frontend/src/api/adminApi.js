@@ -57,6 +57,21 @@ export const adminApi = {
     const response = await axiosInstance.delete(`/admin/reject-admin/${adminId}`);
     return response.data;
   },
+
+  updateStudent: async (studentId, updateData) => {
+    const response = await axiosInstance.put(`/admin/students/${studentId}`, updateData);
+    return response.data;
+  },
+
+  deleteStudent: async (studentId, adminPassword) => {
+    const response = await axiosInstance.post(`/admin/students/${studentId}/delete`, { admin_password: adminPassword });
+    return response.data;
+  },
+
+  deleteStudentsBulk: async (studentIds, adminPassword) => {
+    const response = await axiosInstance.post('/admin/students/bulk-delete', { student_ids: studentIds, admin_password: adminPassword });
+    return response.data;
+  },
 };
 
 export default adminApi;

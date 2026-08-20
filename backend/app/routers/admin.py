@@ -40,16 +40,20 @@ from sqlmodel import Session, select
 
 from app.core.permissions import require_admin
 from app.database import get_db
+from app.core.security import verify_password
 from app.models.admin import Admin
 from app.models.preference import Preference
 from app.schemas.admin import AdminResponse
 from app.schemas.preference import PreferenceResponse
-from app.schemas.student import StudentResponse
+from app.schemas.student import StudentResponse, StudentUpdate, BulkDeleteRequest, DeleteStudentRequest
 from app.services.preference_service import get_student_week_preferences
 from app.services.student_service import (
     get_all_students,
     get_student_by_id,
     search_students,
+    update_student,
+    delete_student,
+    delete_students_bulk,
 )
 from app.utils.date_utils import get_upcoming_week_start
 
@@ -332,3 +336,85 @@ def reject_admin_request(
     db.commit()
 
     return {"message": "Admin registration request rejected."}
+
+
+# STUDENT MANAGEMENT
+
+@router.put(
+    "/students/{student_id}",
+    response_model=StudentResponse,
+)
+def edit_student_details(
+    student_id: int,
+    updates: StudentUpdate,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a student's profile details.
+    """
+    try:
+        student = update_student(db=db, student_id=student_id, updates=updates)
+        if student is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student not found",
+            )
+        return student
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+@router.post(
+    "/students/{student_id}/delete",
+    status_code=status.HTTP_200_OK,
+)
+def delete_student_record(
+    student_id: int,
+    request: DeleteStudentRequest,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete a student and their preferences. Requires password re-verification.
+    """
+    if not verify_password(request.admin_password, current_admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password verification failed. Incorrect password.",
+        )
+
+    success = delete_student(db=db, student_id=student_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+    return {"message": "Student record and all associated preference data permanently deleted."}
+
+
+@router.post(
+    "/students/bulk-delete",
+    status_code=status.HTTP_200_OK,
+)
+def bulk_delete_student_records(
+    request: BulkDeleteRequest,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete multiple students and their preferences. Requires password re-verification.
+    """
+    if not verify_password(request.admin_password, current_admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password verification failed. Incorrect password.",
+        )
+
+    deleted_count = delete_students_bulk(db=db, student_ids=request.student_ids)
+    return {
+        "message": f"Successfully deleted {deleted_count} student record(s) and their associated preference data."
+    }

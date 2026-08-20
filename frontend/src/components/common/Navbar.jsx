@@ -52,10 +52,13 @@ export const Navbar = () => {
           {/* Brand Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
             <img
-              src="/images.jpeg"
+              src="/logo.webp"
               alt="Gita-Bhojanalay Logo"
               width="42"
               height="42"
+              fetchpriority="high"
+              elementtiming="lcp-logo"
+              decoding="async"
               style={{
                 width: '42px',
                 height: '42px',

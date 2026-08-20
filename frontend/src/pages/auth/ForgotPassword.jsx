@@ -94,10 +94,12 @@ export const ForgotPassword = () => {
         {/* Reset Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Registered Student Email</label>
+            <label htmlFor="forgot-student-email" className="form-label">Registered Student Email</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
               <input
+                id="forgot-student-email"
+                name="email"
                 type="email"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}
@@ -110,10 +112,12 @@ export const ForgotPassword = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Roll Number or Phone Number</label>
+            <label htmlFor="forgot-student-identifier" className="form-label">Roll Number or Phone Number</label>
             <div style={{ position: 'relative' }}>
               <KeyRound size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
               <input
+                id="forgot-student-identifier"
+                name="identifier"
                 type="text"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}
@@ -126,10 +130,12 @@ export const ForgotPassword = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-            <label className="form-label">New Password</label>
+            <label htmlFor="forgot-student-newpassword" className="form-label">New Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
               <input
+                id="forgot-student-newpassword"
+                name="newPassword"
                 type="password"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}

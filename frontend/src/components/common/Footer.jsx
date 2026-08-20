@@ -26,8 +26,10 @@ export const Footer = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <img
-              src="/images.jpeg"
+              src="/logo.webp"
               alt="Gita-Bhojanalay Logo"
+              width="40"
+              height="40"
               style={{
                 width: '40px',
                 height: '40px',

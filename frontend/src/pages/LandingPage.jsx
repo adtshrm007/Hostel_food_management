@@ -23,7 +23,7 @@ export const LandingPage = () => {
           <div style={{ maxWidth: '780px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <img
-                src="/images.jpeg"
+                src="/logo.webp"
                 alt="Gita-Bhojanalay Logo"
                 width="48"
                 height="48"
