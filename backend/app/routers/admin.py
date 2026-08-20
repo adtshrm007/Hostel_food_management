@@ -35,7 +35,7 @@
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlmodel import Session, select
 
 from app.core.permissions import require_admin
@@ -54,6 +54,7 @@ from app.services.student_service import (
     update_student,
     delete_student,
     delete_students_bulk,
+    bulk_import_students_service,
 )
 from app.utils.date_utils import get_upcoming_week_start
 
@@ -490,3 +491,90 @@ def bulk_delete_student_records(
     return {
         "message": f"Successfully deleted {deleted_count} student record(s) and their associated preference data."
     }
+
+
+import csv
+import io
+
+@router.post(
+    "/students/import",
+    status_code=status.HTTP_201_CREATED,
+)
+async def import_students_file(
+    file: UploadFile = File(...),
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Bulk import students from an uploaded CSV (.csv) or Excel (.xlsx / .xls) file.
+    Validates headers and student records strictly before feeding the database.
+    Rejects the file if validation fails.
+    """
+    filename = file.filename.lower() if file.filename else ""
+
+    if not (filename.endswith(".csv") or filename.endswith(".xlsx") or filename.endswith(".xls")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File rejected: Only CSV (.csv) and Excel (.xlsx, .xls) files are supported.",
+        )
+
+    content = await file.read()
+    raw_rows = []
+
+    try:
+        # Parse CSV
+        if filename.endswith(".csv"):
+            decoded = content.decode("utf-8-sig", errors="replace")
+            reader = csv.DictReader(io.StringIO(decoded))
+            raw_rows = [row for row in reader]
+
+        # Parse Excel (.xlsx / .xls)
+        else:
+            try:
+                import openpyxl
+            except ImportError:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Server configuration error: openpyxl library is required for Excel files.",
+                )
+
+            wb = openpyxl.load_workbook(filename=io.BytesIO(content), data_only=True)
+            sheet = wb.active
+            rows_generator = sheet.iter_rows(values_only=True)
+
+            header_row = next(rows_generator, None)
+            if not header_row:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="File rejected: Excel sheet is empty.",
+                )
+
+            headers = [str(cell).strip() if cell is not None else "" for cell in header_row]
+
+            for row in rows_generator:
+                if not any(row):  # Skip completely empty rows
+                    continue
+                row_dict = {}
+                for idx, cell in enumerate(row):
+                    if idx < len(headers) and headers[idx]:
+                        row_dict[headers[idx]] = cell
+                if row_dict:
+                    raw_rows.append(row_dict)
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse uploaded file: {str(exc)}",
+        )
+
+    try:
+        imported_students = bulk_import_students_service(db=db, raw_rows=raw_rows)
+        return {
+            "message": f"Successfully imported {len(imported_students)} student record(s) into the database.",
+            "imported_count": len(imported_students),
+        }
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )

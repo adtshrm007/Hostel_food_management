@@ -271,3 +271,158 @@ def delete_students_bulk(db: Session, student_ids: list[int]) -> int:
 
     db.commit()
     return deleted_count
+
+
+import re
+from app.core.security import hash_password
+
+COLUMN_MAPPINGS = {
+    "name": ["name", "student_name", "full_name", "student name", "full name"],
+    "roll": ["roll", "roll_no", "roll_number", "rollno", "roll number", "roll #"],
+    "phone": ["phone", "phone_number", "contact", "mobile", "phone_no", "contact_no", "phone number", "mobile number"],
+    "hostel": ["hostel", "hostel_name", "hostel name", "room", "block"],
+    "email": ["email", "email_address", "email address"],
+    "password": ["password", "pass", "initial_password", "initial password"],
+}
+
+def normalize_row_keys(row: dict) -> dict:
+    normalized = {}
+    for key, value in row.items():
+        if key is None:
+            continue
+        clean_key = str(key).strip().lower()
+        matched_field = None
+        for field_name, aliases in COLUMN_MAPPINGS.items():
+            if clean_key in aliases:
+                matched_field = field_name
+                break
+        if matched_field:
+            normalized[matched_field] = str(value).strip() if value is not None else ""
+        else:
+            normalized[clean_key] = str(value).strip() if value is not None else ""
+    return normalized
+
+
+def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Student]:
+    """
+    Bulk import students from raw CSV or Excel row data.
+    Strictly validates column headers, formats, and duplicates before committing.
+    Rejects the entire upload if validation fails.
+    """
+    if not raw_rows:
+        raise ValueError("File is empty or contains no data rows.")
+
+    normalized_rows = [normalize_row_keys(row) for row in raw_rows]
+
+    # Check for required column headers in first row / across headers
+    sample_keys = set()
+    for row in normalized_rows:
+        sample_keys.update(row.keys())
+
+    required_fields = ["name", "roll", "phone", "hostel", "email"]
+    missing_fields = [field for field in required_fields if field not in sample_keys]
+
+    if missing_fields:
+        missing_str = ", ".join([f.capitalize() for f in missing_fields])
+        raise ValueError(f"File rejected: Missing required column(s): {missing_str}. Required columns are Name, Roll, Phone, Hostel, Email.")
+
+    errors = []
+    seen_rolls = set()
+    seen_emails = set()
+    seen_phones = set()
+
+    # Pre-fetch existing database unique fields for fast conflict checking
+    existing_rolls = set(db.exec(select(Student.roll)).all())
+    existing_emails = set(db.exec(select(Student.email)).all())
+    existing_phones = set(db.exec(select(Student.phone)).all())
+
+    valid_students_data = []
+
+    for idx, row in enumerate(normalized_rows, start=2): # Start at row 2 (assuming row 1 is header)
+        name = row.get("name", "").strip()
+        roll = row.get("roll", "").strip()
+        phone = row.get("phone", "").strip()
+        hostel = row.get("hostel", "").strip()
+        email = row.get("email", "").strip().lower()
+        password = row.get("password", "").strip() or roll  # Default password to roll number if omitted
+
+        # Check required fields
+        if not name:
+            errors.append(f"Row {idx}: Name is required.")
+        if not roll:
+            errors.append(f"Row {idx}: Roll number is required.")
+        if not phone:
+            errors.append(f"Row {idx}: Phone number is required.")
+        if not hostel:
+            errors.append(f"Row {idx}: Hostel is required.")
+        if not email:
+            errors.append(f"Row {idx}: Email address is required.")
+
+        # Basic email validation
+        if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+            errors.append(f"Row {idx}: Invalid email address format '{email}'.")
+
+        # Basic phone validation (10 to 15 digits)
+        clean_phone = re.sub(r"[^\d+]", "", phone)
+        if phone and not re.match(r"^\+?[0-9]{10,15}$", clean_phone):
+            errors.append(f"Row {idx}: Invalid phone number '{phone}' (must be 10-15 digits).")
+
+        # Duplicate checks within the file
+        if roll in seen_rolls:
+            errors.append(f"Row {idx}: Duplicate Roll number '{roll}' found in file.")
+        else:
+            if roll: seen_rolls.add(roll)
+
+        if email in seen_emails:
+            errors.append(f"Row {idx}: Duplicate Email '{email}' found in file.")
+        else:
+            if email: seen_emails.add(email)
+
+        if clean_phone in seen_phones:
+            errors.append(f"Row {idx}: Duplicate Phone '{phone}' found in file.")
+        else:
+            if clean_phone: seen_phones.add(clean_phone)
+
+        # Duplicate checks against Database
+        if roll in existing_rolls:
+            errors.append(f"Row {idx}: Roll number '{roll}' already exists in database.")
+        if email in existing_emails:
+            errors.append(f"Row {idx}: Email '{email}' already exists in database.")
+        if clean_phone in existing_phones:
+            errors.append(f"Row {idx}: Phone '{phone}' already exists in database.")
+
+        if not errors or len(errors) <= 20:
+            valid_students_data.append({
+                "name": name,
+                "roll": roll,
+                "phone": clean_phone or phone,
+                "hostel": hostel,
+                "email": email,
+                "password": password,
+            })
+
+    if errors:
+        error_summary = "\n".join(errors[:10])
+        if len(errors) > 10:
+            error_summary += f"\n...and {len(errors) - 10} more error(s)."
+        raise ValueError(f"File rejected due to validation errors:\n{error_summary}")
+
+    # All rows valid — Create Student entities
+    new_students = []
+    for data in valid_students_data:
+        student = Student(
+            name=data["name"],
+            roll=data["roll"],
+            phone=data["phone"],
+            hostel=data["hostel"],
+            email=data["email"],
+            password_hash=hash_password(data["password"]),
+        )
+        db.add(student)
+        new_students.append(student)
+
+    db.commit()
+    for student in new_students:
+        db.refresh(student)
+
+    return new_students

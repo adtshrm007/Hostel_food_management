@@ -29,6 +29,7 @@ python-multipart
 # --- Validation & Settings ---
 pydantic-settings
 email-validator
+openpyxl
 
 # --- Testing ---
 pytest

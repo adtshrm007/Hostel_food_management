@@ -82,6 +82,15 @@ export const adminApi = {
     const response = await axiosInstance.delete(`/admin/students/${studentId}/preferences`);
     return response.data;
   },
+
+  importStudents: async (formData) => {
+    const response = await axiosInstance.post('/admin/students/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 export default adminApi;

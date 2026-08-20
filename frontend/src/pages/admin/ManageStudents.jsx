@@ -6,7 +6,7 @@ import Loader from '../../components/common/Loader';
 import { HOSTEL_OPTIONS } from '../../utils/hostels';
 import {
   AlertCircle, CheckCircle, Trash2, Edit3, UserCheck, X,
-  ChevronDown, Users, ShieldAlert
+  ChevronDown, Users, ShieldAlert, Upload, Download, FileText
 } from 'lucide-react';
 
 // ─── Confirmation Modal ─────────────────────────────────────────────
@@ -213,6 +213,262 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
   );
 };
 
+// ─── Import Student Modal (CSV / Excel) ──────────────────────────────
+const ImportStudentModal = ({ open, onClose, onSuccess }) => {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      setFile(null);
+      setError('');
+      setSuccessMsg('');
+      setLoading(false);
+      setDragActive(false);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      validateAndSetFile(selectedFile);
+    }
+  };
+
+  const validateAndSetFile = (selectedFile) => {
+    setError('');
+    setSuccessMsg('');
+    const ext = selectedFile.name.split('.').pop().toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
+      setError('Invalid file type. Only CSV (.csv) and Excel (.xlsx, .xls) files are supported.');
+      setFile(null);
+      return;
+    }
+    setFile(selectedFile);
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndSetFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDownloadSampleCSV = () => {
+    const csvContent = 'name,roll,phone,hostel,email,password\n' +
+      'Rahul Sharma,2401001,+919876543210,Gita Bhawan Block A,rahul.sharma@example.com,Rahul@123\n' +
+      'Ananya Verma,2401002,+919876543211,Gita Bhawan Block B,ananya.verma@example.com,Ananya@123\n';
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'student_import_sample_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      setError('Please select a CSV or Excel file to upload.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await adminApi.importStudents(formData);
+      setSuccessMsg(response.message || `Successfully imported ${response.imported_count} student(s)!`);
+      setTimeout(() => {
+        onSuccess();
+      }, 1200);
+    } catch (err) {
+      console.error('Import failed:', err);
+      const detail = err?.response?.data?.detail || err.message || 'File rejected. Import failed.';
+      setError(detail);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div
+        onClick={onClose}
+        style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(18,48,74,0.65)', backdropFilter: 'blur(4px)' }}
+      />
+      <div className="card" style={{
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 580,
+        padding: 0, overflow: 'hidden', animation: 'fadeIn 0.2s ease',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.25)', borderRadius: '20px'
+      }}>
+        {/* Header */}
+        <div style={{
+          backgroundColor: 'var(--color-navy)', color: 'var(--color-cream)',
+          padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <Upload size={22} color="var(--color-mint)" />
+            <div>
+              <h3 style={{ color: 'var(--color-cream)', margin: 0, fontSize: '1.25rem' }}>
+                Import / Add Students (CSV / Excel)
+              </h3>
+              <div style={{ fontSize: '0.82rem', color: 'var(--color-mint)', opacity: 0.9 }}>
+                Upload .csv, .xlsx, or .xls file to bulk feed the database
+              </div>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm" style={{ color: 'var(--color-cream)', padding: '0.4rem', borderRadius: '50%' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Column Guidelines Box */}
+          <div style={{
+            backgroundColor: 'var(--color-cream)', border: '1px solid var(--border-subtle)',
+            borderRadius: '12px', padding: '1rem 1.25rem', fontSize: '0.88rem'
+          }}>
+            <div style={{ fontWeight: 700, color: 'var(--color-navy)', marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Required Header Columns</span>
+              <button
+                type="button"
+                onClick={handleDownloadSampleCSV}
+                className="btn btn-ghost btn-sm"
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.78rem', color: 'var(--color-green)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+              >
+                <Download size={14} /> Download Sample CSV
+              </button>
+            </div>
+            <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-charcoal-muted)' }}>
+              The uploaded file <strong>must contain</strong> the following columns (case-insensitive):
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <span className="badge badge-mint">name *</span>
+              <span className="badge badge-mint">roll *</span>
+              <span className="badge badge-mint">phone *</span>
+              <span className="badge badge-mint">hostel *</span>
+              <span className="badge badge-mint">email *</span>
+              <span className="badge badge-navy">password (optional)</span>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '0.5rem' }}>
+              * If <code>password</code> is omitted, the student's Roll number will be used as their default password.
+            </div>
+          </div>
+
+          {/* Notifications */}
+          {error && (
+            <div className="alert alert-danger" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+              <AlertCircle size={20} style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.88rem' }}>{error}</div>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="alert alert-success" style={{ margin: 0 }}>
+              <CheckCircle size={20} style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{successMsg}</div>
+            </div>
+          )}
+
+          {/* Drag & Drop File Zone */}
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              border: `2px dashed ${dragActive ? 'var(--color-green)' : file ? 'var(--color-navy)' : 'var(--border-strong)'}`,
+              backgroundColor: dragActive ? 'var(--color-mint-light)' : file ? 'var(--color-cream)' : '#FAFCFE',
+              borderRadius: '16px', padding: '1.75rem 1.5rem', textAlign: 'center', cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv, .xlsx, .xls"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+
+            {file ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={36} color="var(--color-green)" />
+                <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '1rem' }}>{file.name}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-charcoal-muted)' }}>
+                  {(file.size / 1024).toFixed(1)} KB — Ready to validate & feed database
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-coral)', fontWeight: 600, marginTop: '0.2rem' }}>
+                  Click to change file
+                </span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <Upload size={36} color="var(--color-navy)" />
+                <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '1rem' }}>
+                  Drag & Drop CSV or Excel file here
+                </span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)' }}>
+                  or <span style={{ color: 'var(--color-green)', fontWeight: 600, textDecoration: 'underline' }}>browse from computer</span>
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '0.25rem' }}>
+                  Supported extensions: .csv, .xlsx, .xls
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Actions */}
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-coral btn-sm"
+              disabled={loading || !file}
+              style={{ minWidth: '140px' }}
+            >
+              {loading ? 'Validating & Feeding...' : 'Validate & Feed Database'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ─── Toast Notification ─────────────────────────────────────────────
 const Toast = ({ message, type, onDismiss }) => {
   useEffect(() => {
@@ -292,6 +548,7 @@ export const ManageStudents = () => {
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', confirmLabel: '', confirmDanger: false, onConfirm: null });
   const [editModal, setEditModal] = useState({ open: false, student: null });
   const [editError, setEditError] = useState('');
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Loading states
   const [actionLoading, setActionLoading] = useState(false);
@@ -459,6 +716,13 @@ export const ManageStudents = () => {
             Manage Students
           </h2>
         </div>
+        <button
+          onClick={() => setImportModalOpen(true)}
+          className="btn btn-outline-light"
+          style={{ width: 'fit-content', gap: '0.5rem' }}
+        >
+          <Upload size={18} /> Import / Add Students (CSV/Excel)
+        </button>
       </div>
 
       {/* Error Banner */}
@@ -665,6 +929,16 @@ export const ManageStudents = () => {
         onClose={() => setEditModal({ open: false, student: null })}
         loading={actionLoading}
         error={editError}
+      />
+
+      <ImportStudentModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={() => {
+          setImportModalOpen(false);
+          fetchStudents();
+          showToast('Student batch imported successfully!');
+        }}
       />
 
       {/* Toast */}
