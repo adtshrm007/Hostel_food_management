@@ -143,10 +143,10 @@ if os.path.exists(frontend_dist):
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        # Do not intercept API or backend endpoints
-        if any(full_path.startswith(prefix) for prefix in ["api/", "auth/", "student/", "admin/", "menu/", "preference/"]):
+        # Do not intercept /api/* — let FastAPI handle unmatched API routes as 404
+        if full_path.startswith("api/"):
             from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="Route not found")
+            raise HTTPException(status_code=404, detail="API route not found")
 
         # Serve static file if it exists in frontend/dist
         file_path = os.path.join(frontend_dist, full_path)
