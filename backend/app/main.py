@@ -80,12 +80,12 @@ async def add_security_headers(request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self'; "
+        "default-src 'self' https: http: data: blob: 'unsafe-inline' 'unsafe-eval'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob:; "
-        "connect-src 'self';"
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data: blob: https:; "
+        "connect-src 'self' https: http: ws: wss:;"
     )
     return response
 
@@ -143,17 +143,21 @@ if os.path.exists(frontend_dist):
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        # Do not intercept /api/* — let FastAPI handle those
-        if full_path.startswith("api/"):
-            # Just return 404 if no matching API route exists
+        # Do not intercept API or backend endpoints
+        if any(full_path.startswith(prefix) for prefix in ["api/", "auth/", "student/", "admin/", "menu/", "preference/"]):
             from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="API route not found")
+            raise HTTPException(status_code=404, detail="Route not found")
 
-        # Serve static files if they exist
+        # Serve static file if it exists in frontend/dist
         file_path = os.path.join(frontend_dist, full_path)
         if full_path and os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)
 
-        # Otherwise, return index.html for SPA routes
+        # If full_path looks like a missing static asset (has file extension), return 404 instead of returning index.html
+        if "." in os.path.basename(full_path):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail=f"Asset not found: {full_path}")
+
+        # Otherwise, return index.html for SPA client-side routes
         index_file = os.path.join(frontend_dist, "index.html")
         return FileResponse(index_file)
