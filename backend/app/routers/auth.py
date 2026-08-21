@@ -6,7 +6,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
-from app.core.rate_limiter import rate_limit_auth_requests
+from app.core.rate_limiter import rate_limit_auth_requests, rate_limit_registration_requests
 from app.database import get_db
 from app.schemas.auth import (
     AdminLoginRequest,
@@ -32,7 +32,7 @@ router = APIRouter()
     "/student/register",
     response_model=StudentResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit_auth_requests)],
+    dependencies=[Depends(rate_limit_registration_requests)],
 )
 def student_register(
     student_data: StudentCreate,
@@ -115,7 +115,7 @@ def student_login(
     "/admin/register",
     response_model=AdminResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit_auth_requests)],
+    dependencies=[Depends(rate_limit_registration_requests)],
 )
 def admin_register(
     admin_data: AdminCreate,

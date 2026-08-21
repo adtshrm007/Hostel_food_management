@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import authApi from '../../api/authApi';
 import { extractErrorMessage } from '../../utils/errorHelpers';
-import { User, Mail, Lock, Phone, Building, Hash, ArrowRight, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { User, Mail, Lock, Phone, Building, Hash, ArrowRight, AlertCircle, CheckCircle2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { HOSTEL_OPTIONS } from '../../utils/hostels';
 
 export const Register = () => {
@@ -10,6 +10,7 @@ export const Register = () => {
   const initialRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
 
   const [activeTab, setActiveTab] = useState(initialRole);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Student Form State
   const [studentForm, setStudentForm] = useState({
@@ -67,14 +68,35 @@ export const Register = () => {
     }
   };
 
+  const ADMIN_USERNAME_REGEX = /^(?=.{5,20}$)(?!.*__)(?!.*_$)[A-Z][a-zA-Z0-9_]+$/;
+  const ADMIN_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,16}$/;
+
   const handleSubmitAdmin = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+
+    const username = (adminForm.username || '').trim();
+    const password = (adminForm.password || '').trim();
+
+    if (!ADMIN_USERNAME_REGEX.test(username)) {
+      setError(
+        'Admin username must be 5-20 characters long, start with an uppercase letter (A-Z), cannot contain consecutive underscores ("__") or end with an underscore ("_"), and contain only letters, numbers, and underscores.'
+      );
+      return;
+    }
+
+    if (!ADMIN_PASSWORD_REGEX.test(password)) {
+      setError(
+        'Admin password must be 8-16 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character (@$!%*?&).'
+      );
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      await authApi.registerAdmin(adminForm);
+      await authApi.registerAdmin({ username, password });
       setSuccessMsg('Admin registration request submitted successfully! An existing administrator must grant your approval request before you can log in.');
     } catch (err) {
       console.error('Admin registration error:', err);
@@ -305,15 +327,22 @@ export const Register = () => {
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
                   id="reg-student-password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   className="form-input"
-                  style={{ paddingLeft: '2.5rem' }}
+                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                   placeholder="••••••••"
                   value={studentForm.password}
                   onChange={handleStudentChange}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -344,12 +373,15 @@ export const Register = () => {
                   name="username"
                   className="form-input"
                   style={{ paddingLeft: '2.5rem' }}
-                  placeholder="e.g. admin_john"
+                  placeholder="e.g. Admin_john1"
                   value={adminForm.username}
                   onChange={handleAdminChange}
                   required
                 />
               </div>
+              <small style={{ fontSize: '0.75rem', color: 'var(--color-charcoal-muted)', marginTop: '0.25rem', display: 'block' }}>
+                5-20 chars, must start with uppercase letter (A-Z), no consecutive ('__') or trailing ('_') underscores.
+              </small>
             </div>
 
             <div className="form-group" style={{ marginBottom: '0.5rem' }}>
@@ -358,16 +390,26 @@ export const Register = () => {
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
                 <input
                   id="reg-admin-password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   className="form-input"
-                  style={{ paddingLeft: '2.5rem' }}
+                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                   placeholder="Create admin password"
                   value={adminForm.password}
                   onChange={handleAdminChange}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+              <small style={{ fontSize: '0.75rem', color: 'var(--color-charcoal-muted)', marginTop: '0.25rem', display: 'block' }}>
+                8-16 chars, must contain at least 1 uppercase, 1 lowercase, 1 digit, and 1 special char (@$!%*?&).
+              </small>
             </div>
 
             <button

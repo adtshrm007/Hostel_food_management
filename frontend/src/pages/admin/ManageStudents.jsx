@@ -6,13 +6,15 @@ import Loader from '../../components/common/Loader';
 import { HOSTEL_OPTIONS } from '../../utils/hostels';
 import {
   AlertCircle, CheckCircle, Trash2, Edit3, UserCheck, X,
-  ChevronDown, Users, ShieldAlert, Upload, Download, FileText
+  ChevronDown, Users, ShieldAlert, Upload, Download, FileText,
+  Eye, EyeOff
 } from 'lucide-react';
 
 // ─── Confirmation Modal ─────────────────────────────────────────────
 const ConfirmModal = ({ open, title, message, confirmLabel, confirmDanger, onConfirm, onCancel, loading, requirePassword }) => {
   const [password, setPassword] = useState('');
   const [passError, setPassError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -59,17 +61,27 @@ const ConfirmModal = ({ open, title, message, confirmLabel, confirmDanger, onCon
               <label htmlFor="admin-confirm-password" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)', marginBottom: '0.35rem', display: 'block' }}>
                 Confirm Admin Password <span style={{ color: 'var(--color-danger)' }}>*</span>
               </label>
-              <input
-                id="admin-confirm-password"
-                name="adminConfirmPassword"
-                type="password"
-                className="form-input"
-                placeholder="Enter your admin password..."
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setPassError(''); }}
-                required
-                autoFocus
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="admin-confirm-password"
+                  name="adminConfirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  style={{ paddingRight: '2.5rem' }}
+                  placeholder="Enter your admin password..."
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setPassError(''); }}
+                  required
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {passError && (
                 <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', marginTop: '0.35rem' }}>
                   {passError}
@@ -829,7 +841,7 @@ export const ManageStudents = () => {
                       title={allSelected ? 'Deselect all' : 'Select all'}
                     />
                   </th>
-                  <th style={{ padding: '1rem 1rem' }}>ID</th>
+                  <th style={{ padding: '1rem 1rem' }}>SL NO.</th>
                   <th style={{ padding: '1rem 1rem' }}>Name</th>
                   <th style={{ padding: '1rem 1rem' }}>Roll No.</th>
                   <th style={{ padding: '1rem 1rem' }}>Hostel</th>
@@ -866,7 +878,7 @@ export const ManageStudents = () => {
                         />
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontWeight: 700, color: 'var(--color-navy)' }}>
-                        #{student.student_id}
+                        #{index + 1}
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>
                         {student.name}

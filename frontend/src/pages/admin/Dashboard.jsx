@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import adminApi from '../../api/adminApi';
 import StudentTable from '../../components/admin/StudentTable';
-import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert, Shield } from 'lucide-react';
 
 import { toLocalDateStr } from '../../utils/dateHelpers';
 
@@ -48,6 +48,9 @@ export const Dashboard = () => {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [error, setError] = useState('');
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminListLoading, setAdminListLoading] = useState(false);
 
   // Memoize date calculations to prevent main thread blocking during renders
   const rangeDates = useMemo(() => getDatesFromTodayToNextSunday(), []);
@@ -115,6 +118,23 @@ export const Dashboard = () => {
     }
   };
 
+  const fetchAllAdmins = async () => {
+    setAdminListLoading(true);
+    try {
+      const data = await adminApi.getAllAdmins();
+      setAllAdmins(data);
+    } catch (err) {
+      console.error('Failed to fetch admins:', err);
+    } finally {
+      setAdminListLoading(false);
+    }
+  };
+
+  const handleOpenAdminModal = () => {
+    setShowAdminModal(true);
+    fetchAllAdmins();
+  };
+
   const totalStudents = students.length;
   const uniqueHostels = useMemo(() => Array.from(new Set(students.map((s) => s.hostel))).length, [students]);
 
@@ -149,12 +169,88 @@ export const Dashboard = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button onClick={handleOpenAdminModal} className="btn" style={{ backgroundColor: 'var(--color-navy)', color: 'var(--color-cream)', border: 'none' }}>
+            <Shield size={18} /> View Admins
+          </button>
           <Link to="/admin/records" className="btn btn-coral">
             <Users size={18} /> Student Directory
           </Link>
         </div>
       </div>
+
+      {/* Admin List Modal */}
+      {showAdminModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(18, 48, 74, 0.55)', backdropFilter: 'blur(4px)',
+          }}
+          onClick={() => setShowAdminModal(false)}
+        >
+          <div
+            style={{
+              position: 'relative', zIndex: 1, width: '100%', maxWidth: 480,
+              backgroundColor: 'var(--color-white)', borderRadius: '20px',
+              boxShadow: 'var(--shadow-lg)', padding: '2rem 1.75rem',
+              animation: 'fadeIn 0.2s ease',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Shield size={22} color="var(--color-navy)" />
+                <h3 style={{ margin: 0, color: 'var(--color-navy)', fontSize: '1.2rem' }}>Active Administrators</h3>
+              </div>
+              <button onClick={() => setShowAdminModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {adminListLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>Loading admins...</div>
+            ) : allAdmins.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>No approved admins found.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '400px', overflowY: 'auto' }}>
+                {allAdmins.map((admin, index) => (
+                  <div
+                    key={admin.username}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '0.85rem 1.15rem', borderRadius: 'var(--radius-md)',
+                      backgroundColor: index % 2 === 0 ? 'var(--color-cream)' : 'var(--color-white)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{
+                        width: '36px', height: '36px', borderRadius: '50%',
+                        backgroundColor: 'var(--color-navy)', color: 'var(--color-cream)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: '0.85rem', flexShrink: 0,
+                      }}>
+                        {admin.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '0.95rem' }}>@{admin.username}</div>
+                      </div>
+                    </div>
+                    <span className="badge badge-mint" style={{ fontSize: '0.7rem' }}>#{index + 1}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', backgroundColor: 'var(--color-cream)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', fontWeight: 600 }}>
+                Total Active Admins: <strong style={{ color: 'var(--color-navy)' }}>{allAdmins.length}</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="alert alert-danger">{error}</div>}
       {actionSuccessMsg && (

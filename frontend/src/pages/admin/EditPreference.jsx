@@ -403,7 +403,7 @@ export const EditPreference = () => {
                       </div>
                       {pref.updated_by && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-coral)', fontWeight: 600 }}>
-                          Overridden by Admin #{pref.updated_by}
+                          Overridden by Admin
                         </div>
                       )}
                     </div>
@@ -562,11 +562,11 @@ export const EditPreference = () => {
                           {formatDatePretty(pref.meal_date)} ({pref.meal_type.toUpperCase()})
                         </div>
                         <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '0.2rem' }}>
-                          Preference ID: {pref.preference_id} | Week Start: {pref.week_start_date}
+                          Week Start: {pref.week_start_date}
                         </div>
                         {pref.updated_by ? (
                           <div style={{ fontSize: '0.78rem', color: 'var(--color-coral)', fontWeight: 600, marginTop: '0.1rem' }}>
-                            Overridden by Admin #{pref.updated_by} {pref.updated_at ? `on ${formatDatePretty(pref.updated_at)}` : ''}
+                            Overridden by Admin {pref.updated_at ? `on ${formatDatePretty(pref.updated_at)}` : ''}
                           </div>
                         ) : (
                           <div style={{ fontSize: '0.78rem', color: 'var(--color-green)', fontWeight: 500, marginTop: '0.1rem' }}>

@@ -342,6 +342,23 @@ def get_daily_summary(
     return summary
 
 
+# ALL ADMINS LIST
+
+@router.get(
+    "/all-admins",
+    response_model=list[AdminResponse],
+)
+def get_all_admins(
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all approved (active) administrators.
+    """
+    statement = select(Admin).where(Admin.is_approved == True)
+    return list(db.exec(statement).all())
+
+
 # ADMIN APPROVAL MANAGEMENT
 
 @router.get(

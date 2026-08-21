@@ -39,7 +39,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
-              <th style={{ padding: '1rem 1.25rem' }}>ID</th>
+              <th style={{ padding: '1rem 1.25rem' }}>SL NO.</th>
               <th style={{ padding: '1rem 1.25rem' }}>Name</th>
               <th style={{ padding: '1rem 1.25rem' }}>Roll No.</th>
               <th style={{ padding: '1rem 1.25rem' }}>Hostel</th>
@@ -58,7 +58,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
                 }}
               >
                 <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: 'var(--color-navy)' }}>
-                  #{student.student_id}
+                  #{index + 1}
                 </td>
                 <td style={{ padding: '1rem 1.25rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>
                   {student.name}

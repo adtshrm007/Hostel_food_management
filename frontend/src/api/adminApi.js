@@ -48,6 +48,11 @@ export const adminApi = {
     return response.data;
   },
 
+  getAllAdmins: async () => {
+    const response = await axiosInstance.get('/admin/all-admins');
+    return response.data;
+  },
+
   approveAdmin: async (adminId) => {
     const response = await axiosInstance.post(`/admin/approve-admin/${adminId}`);
     return response.data;

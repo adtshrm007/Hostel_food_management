@@ -18,7 +18,11 @@ export const authApi = {
   },
 
   registerAdmin: async (adminData) => {
-    const response = await axiosInstance.post('/auth/admin/register', adminData);
+    const payload = {
+      username: typeof adminData?.username === 'string' ? adminData.username.trim() : adminData?.username,
+      password: typeof adminData?.password === 'string' ? adminData.password.trim() : adminData?.password,
+    };
+    const response = await axiosInstance.post('/auth/admin/register', payload);
     return response.data;
   },
 

@@ -43,3 +43,31 @@ def rate_limit_auth_requests(
         )
 
     _REQUEST_HISTORY[client_ip].append(now)
+
+_REGISTRATION_HISTORY: dict[str, list[float]] = defaultdict(list)
+
+def rate_limit_registration_requests(
+    request: Request,
+    max_requests: int = 10,
+    window_seconds: int = 86400,
+):
+    """
+    FastAPI dependency that enforces a rate limit per client IP address specifically for registrations.
+    Limits to 10 requests per day (86400 seconds).
+    """
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    now = time.time()
+    cutoff = now - window_seconds
+
+    # Filter out requests older than window duration
+    history = [t for t in _REGISTRATION_HISTORY[client_ip] if t > cutoff]
+    _REGISTRATION_HISTORY[client_ip] = history
+
+    if len(history) >= max_requests:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="you have exhusted todays registration req from a single device maximum can send 10 requests",
+            headers={"Retry-After": str(window_seconds)},
+        )
+
+    _REGISTRATION_HISTORY[client_ip].append(now)
