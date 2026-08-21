@@ -19,4 +19,21 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor: on 401, clear stale auth and redirect to login
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      // Only redirect if not already on auth pages
+      const path = window.location.pathname;
+      if (!path.startsWith('/login') && !path.startsWith('/register') && !path.startsWith('/forgot-password') && path !== '/') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosInstance;

@@ -43,11 +43,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isTokenExpired = (jwtToken) => {
+    const payload = decodeToken(jwtToken);
+    if (!payload || !payload.exp) return true;
+    // exp is in seconds, Date.now() is in ms
+    return Date.now() >= payload.exp * 1000;
+  };
+
   // Optimistically resolve loading immediately if we have cached credentials,
   // then validate against the server in the background. If the token is invalid/expired
   // the fetchUserData error path calls logout() which clears state and redirects.
   useEffect(() => {
     if (token && role) {
+      // If token is already expired locally, skip the API call and logout silently
+      if (isTokenExpired(token)) {
+        logout();
+        setLoading(false);
+        return;
+      }
       // Immediately unblock page render — ProtectedRoute will render children now.
       setLoading(false);
       // Validate token in background; logout() handles redirect on failure.
