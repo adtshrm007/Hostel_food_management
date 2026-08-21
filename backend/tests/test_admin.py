@@ -71,15 +71,15 @@ def test_admin_update_student(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Jane Doe",
-            "roll": "21CS005",
+            "registration_number": "21CS005",
             "phone": "9876543222",
             "hostel": "Hostel C",
             "email": "jane@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     assert reg_response.status_code == 201
-    student_id = reg_response.json()["student_id"]
+    student_reg = "21CS005"
 
     # 2. Login as admin
     login_response = client.post(
@@ -90,10 +90,10 @@ def test_admin_update_student(client: TestClient, session: Session):
 
     # 3. Update student details
     update_response = client.put(
-        f"/admin/students/{student_id}",
+        f"/admin/students/{student_reg}",
         json={
             "name": "Jane Updated",
-            "roll": "21CS005-U",
+            "registration_number": "21CS005-U",
             "hostel": "Hostel D"
         },
         headers={"Authorization": f"Bearer {token}"},
@@ -101,31 +101,31 @@ def test_admin_update_student(client: TestClient, session: Session):
     assert update_response.status_code == 200
     updated_data = update_response.json()
     assert updated_data["name"] == "Jane Updated"
-    assert updated_data["roll"] == "21CS005-U"
+    assert updated_data["registration_number"] == "21CS005-U"
     assert updated_data["hostel"] == "Hostel D"
     assert updated_data["phone"] == "9876543222" # Unchanged
 
-    # 4. Try updating to an already registered roll/email
+    # 4. Try updating to an already registered registration_number/email
     # Create another student first
     client.post(
         "/auth/student/register",
         json={
             "name": "Bob",
-            "roll": "21CS006",
+            "registration_number": "21CS006",
             "phone": "9876543223",
             "hostel": "Hostel B",
             "email": "bob@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
-    # Try updating Jane to Bob's roll
+    # Try updating Jane to Bob's registration number
     update_fail_response = client.put(
-        f"/admin/students/{student_id}",
-        json={"roll": "21CS006"},
+        "/admin/students/21CS005-U",
+        json={"registration_number": "21CS006"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert update_fail_response.status_code == 400
-    assert "Roll number already registered" in update_fail_response.json()["detail"]
+    assert "Registration number already registered" in update_fail_response.json()["detail"]
 
 
 def test_admin_delete_student(client: TestClient, session: Session):
@@ -134,15 +134,15 @@ def test_admin_delete_student(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Delete Me",
-            "roll": "21CS999",
+            "registration_number": "21CS999",
             "phone": "9876543999",
             "hostel": "Hostel X",
             "email": "deleteme@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     assert reg_response.status_code == 201
-    student_id = reg_response.json()["student_id"]
+    student_reg = "21CS999"
 
     # 2. Login as admin
     login_response = client.post(
@@ -153,7 +153,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
 
     # 3. Try delete with WRONG password
     wrong_pass_resp = client.post(
-        f"/admin/students/{student_id}/delete",
+        f"/admin/students/{student_reg}/delete",
         json={"admin_password": "wrongpassword"},
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -161,7 +161,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
 
     # 4. Delete student with CORRECT password
     delete_response = client.post(
-        f"/admin/students/{student_id}/delete",
+        f"/admin/students/{student_reg}/delete",
         json={"admin_password": "admin123"},
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -170,7 +170,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
 
     # 5. Verify student is deleted
     get_response = client.get(
-        f"/admin/students/{student_id}",
+        f"/admin/students/{student_reg}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert get_response.status_code == 404
@@ -182,11 +182,11 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Bulk 1",
-            "roll": "B1",
+            "registration_number": "B1",
             "phone": "9876500001",
             "hostel": "Hostel B",
             "email": "b1@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     # Register student 2
@@ -194,15 +194,13 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Bulk 2",
-            "roll": "B2",
+            "registration_number": "B2",
             "phone": "9876500002",
             "hostel": "Hostel B",
             "email": "b2@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
-    s1_id = r1.json()["student_id"]
-    s2_id = r2.json()["student_id"]
 
     # 2. Login as admin
     login_response = client.post(
@@ -214,14 +212,14 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
     # 3. Bulk delete with password verification
     bulk_response = client.post(
         "/admin/students/bulk-delete",
-        json={"student_ids": [s1_id, s2_id], "admin_password": "admin123"},
+        json={"registration_numbers": ["B1", "B2"], "admin_password": "admin123"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert bulk_response.status_code == 200
     assert "Successfully deleted 2" in bulk_response.json()["message"]
 
     # 4. Verify they are gone
-    g1 = client.get(f"/admin/students/{s1_id}", headers={"Authorization": f"Bearer {token}"})
-    g2 = client.get(f"/admin/students/{s2_id}", headers={"Authorization": f"Bearer {token}"})
+    g1 = client.get("/admin/students/B1", headers={"Authorization": f"Bearer {token}"})
+    g2 = client.get("/admin/students/B2", headers={"Authorization": f"Bearer {token}"})
     assert g1.status_code == 404
     assert g2.status_code == 404

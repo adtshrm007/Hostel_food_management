@@ -112,9 +112,9 @@ export const TodayPreference = () => {
               <div>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', fontWeight: 600, marginBottom: '0.2rem' }}>
                   <Hash size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '2px' }}/> 
-                  Roll Number
+                  Registration Number
                 </span>
-                <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '1.1rem' }}>{user?.roll || 'N/A'}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '1.1rem' }}>{user?.registration_number || 'N/A'}</span>
               </div>
               <div>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', fontWeight: 600, marginBottom: '0.2rem' }}>

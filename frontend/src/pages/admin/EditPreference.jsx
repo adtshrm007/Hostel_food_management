@@ -42,7 +42,7 @@ const getAdminSelectableDates = () => {
 
 export const EditPreference = () => {
   const [searchParams] = useSearchParams();
-  const studentId = searchParams.get('student_id');
+  const studentId = searchParams.get('registration_number') || searchParams.get('student_id');
 
   const [student, setStudent] = useState(null);
   const [existingPreferences, setExistingPreferences] = useState([]);
@@ -210,7 +210,7 @@ export const EditPreference = () => {
             {student.name}
           </h2>
           <div style={{ color: 'var(--color-mint)', fontSize: '0.95rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-            <span><strong>Roll:</strong> {student.roll}</span>
+            <span><strong>Reg No:</strong> {student.registration_number}</span>
             <span><strong>Hostel:</strong> {student.hostel}</span>
             <span><strong>Email:</strong> {student.email}</span>
             <span><strong>Phone:</strong> {student.phone}</span>
@@ -497,7 +497,7 @@ export const EditPreference = () => {
                     All Saved Preference Logs
                   </h3>
                   <div style={{ fontSize: '0.82rem', color: 'var(--color-mint)', opacity: 0.9 }}>
-                    Student: {student.name} ({student.roll}) — Total {existingPreferences.length} records
+                    Student: {student.name} ({student.registration_number}) — Total {existingPreferences.length} records
                   </div>
                 </div>
               </div>

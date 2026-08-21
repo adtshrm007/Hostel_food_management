@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import authApi from '../../api/authApi';
 import { extractErrorMessage } from '../../utils/errorHelpers';
 import { Mail, Lock, KeyRound, ArrowRight, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { validatePassword, validateEmail } from '../../utils/validation';
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [identifier, setIdentifier] = useState(''); // Roll or Phone
+  const [identifier, setIdentifier] = useState(''); // Registration Number or Phone
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -23,6 +24,18 @@ export const ForgotPassword = () => {
 
     if (!email || !identifier || !newPassword) {
       setError('Please fill in all required fields.');
+      return;
+    }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.isValid) {
+      setError(emailCheck.errorMsg);
+      return;
+    }
+
+    const passwordCheck = validatePassword(newPassword);
+    if (!passwordCheck.isValid) {
+      setError(passwordCheck.errorMsg);
       return;
     }
 
@@ -73,7 +86,7 @@ export const ForgotPassword = () => {
             Reset Password
           </h2>
           <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.9rem' }}>
-            Enter your registered email and roll/phone number to create a new password
+            Enter your registered email and registration/phone number to create a new password
           </p>
         </div>
 
@@ -113,16 +126,16 @@ export const ForgotPassword = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="forgot-student-identifier" className="form-label">Roll Number or Phone Number</label>
+            <label htmlFor="forgot-student-identifier" className="form-label">Registration Number or Phone Number</label>
             <div style={{ position: 'relative' }}>
-              <KeyRound size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+              <Hash size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
               <input
                 id="forgot-student-identifier"
                 name="identifier"
                 type="text"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}
-                placeholder="Enter Roll No or Phone (for verification)"
+                placeholder="Enter Registration No or Phone (for verification)"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 required

@@ -85,19 +85,19 @@ def get_student_by_email(
     return db.exec(statement).first()
 
 
-def get_student_by_roll(
+def get_student_by_registration_number(
     db: Session,
-    roll: str,
+    registration_number: str,
 ) -> Student | None:
     """
-    Retrieve a student using their roll number.
+    Retrieve a student using their registration number.
 
     Args:
         db:
             Active database session.
 
-        roll:
-            Student's unique roll number.
+        registration_number:
+            Student's unique registration number.
 
     Returns:
         Student | None:
@@ -105,7 +105,7 @@ def get_student_by_roll(
     """
 
     statement = select(Student).where(
-        Student.roll == roll
+        Student.registration_number == registration_number
     )
 
     return db.exec(statement).first()
@@ -162,7 +162,7 @@ def search_students(
         search_pattern = f"%{search}%"
         statement = statement.where(
             (Student.name.ilike(search_pattern))
-            | (Student.roll.ilike(search_pattern))
+            | (Student.registration_number.ilike(search_pattern))
             | (Student.email.ilike(search_pattern))
             | (Student.phone.ilike(search_pattern))
         )
@@ -189,15 +189,15 @@ def update_student(
 
     update_data = updates.model_dump(exclude_unset=True)
 
-    if "roll" in update_data and update_data["roll"] != student.roll:
-        existing_roll = db.exec(
+    if "registration_number" in update_data and update_data["registration_number"] != student.registration_number:
+        existing_reg = db.exec(
             select(Student).where(
-                Student.roll == update_data["roll"],
+                Student.registration_number == update_data["registration_number"],
                 Student.student_id != student_id
             )
         ).first()
-        if existing_roll:
-            raise ValueError("Roll number already registered")
+        if existing_reg:
+            raise ValueError("Registration number already registered")
 
     if "phone" in update_data and update_data["phone"] != student.phone:
         existing_phone = db.exec(
@@ -278,7 +278,7 @@ from app.core.security import hash_password
 
 COLUMN_MAPPINGS = {
     "name": ["name", "student_name", "full_name", "student name", "full name"],
-    "roll": ["roll", "roll_no", "roll_number", "rollno", "roll number", "roll #"],
+    "registration_number": ["roll", "roll_no", "roll_number", "rollno", "roll number", "roll #", "registration", "registration_number", "registration number", "reg_no", "reg no"],
     "phone": ["phone", "phone_number", "contact", "mobile", "phone_no", "contact_no", "phone number", "mobile number"],
     "hostel": ["hostel", "hostel_name", "hostel name", "room", "block"],
     "email": ["email", "email_address", "email address"],
@@ -319,20 +319,20 @@ def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Stud
     for row in normalized_rows:
         sample_keys.update(row.keys())
 
-    required_fields = ["name", "roll", "phone", "hostel", "email"]
+    required_fields = ["name", "registration_number", "phone", "hostel", "email"]
     missing_fields = [field for field in required_fields if field not in sample_keys]
 
     if missing_fields:
         missing_str = ", ".join([f.capitalize() for f in missing_fields])
-        raise ValueError(f"File rejected: Missing required column(s): {missing_str}. Required columns are Name, Roll, Phone, Hostel, Email.")
+        raise ValueError(f"File rejected: Missing required column(s): {missing_str}. Required columns are Name, Registration_number, Phone, Hostel, Email.")
 
     errors = []
-    seen_rolls = set()
+    seen_regs = set()
     seen_emails = set()
     seen_phones = set()
 
     # Pre-fetch existing database unique fields for fast conflict checking
-    existing_rolls = set(db.exec(select(Student.roll)).all())
+    existing_regs = set(db.exec(select(Student.registration_number)).all())
     existing_emails = set(db.exec(select(Student.email)).all())
     existing_phones = set(db.exec(select(Student.phone)).all())
 
@@ -340,17 +340,17 @@ def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Stud
 
     for idx, row in enumerate(normalized_rows, start=2): # Start at row 2 (assuming row 1 is header)
         name = row.get("name", "").strip()
-        roll = row.get("roll", "").strip()
+        reg_num = row.get("registration_number", "").strip()
         phone = row.get("phone", "").strip()
         hostel = row.get("hostel", "").strip()
         email = row.get("email", "").strip().lower()
-        password = row.get("password", "").strip() or roll  # Default password to roll number if omitted
+        password = row.get("password", "").strip() or reg_num  # Default password to registration number if omitted
 
         # Check required fields
         if not name:
             errors.append(f"Row {idx}: Name is required.")
-        if not roll:
-            errors.append(f"Row {idx}: Roll number is required.")
+        if not reg_num:
+            errors.append(f"Row {idx}: Registration number is required.")
         if not phone:
             errors.append(f"Row {idx}: Phone number is required.")
         if not hostel:
@@ -368,10 +368,10 @@ def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Stud
             errors.append(f"Row {idx}: Invalid phone number '{phone}' (must be 10-15 digits).")
 
         # Duplicate checks within the file
-        if roll in seen_rolls:
-            errors.append(f"Row {idx}: Duplicate Roll number '{roll}' found in file.")
+        if reg_num in seen_regs:
+            errors.append(f"Row {idx}: Duplicate Registration number '{reg_num}' found in file.")
         else:
-            if roll: seen_rolls.add(roll)
+            if reg_num: seen_regs.add(reg_num)
 
         if email in seen_emails:
             errors.append(f"Row {idx}: Duplicate Email '{email}' found in file.")
@@ -384,8 +384,8 @@ def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Stud
             if clean_phone: seen_phones.add(clean_phone)
 
         # Duplicate checks against Database
-        if roll in existing_rolls:
-            errors.append(f"Row {idx}: Roll number '{roll}' already exists in database.")
+        if reg_num in existing_regs:
+            errors.append(f"Row {idx}: Registration number '{reg_num}' already exists in database.")
         if email in existing_emails:
             errors.append(f"Row {idx}: Email '{email}' already exists in database.")
         if clean_phone in existing_phones:
@@ -394,7 +394,7 @@ def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Stud
         if not errors or len(errors) <= 20:
             valid_students_data.append({
                 "name": name,
-                "roll": roll,
+                "registration_number": reg_num,
                 "phone": clean_phone or phone,
                 "hostel": hostel,
                 "email": email,
@@ -412,7 +412,7 @@ def bulk_import_students_service(db: Session, raw_rows: list[dict]) -> list[Stud
     for data in valid_students_data:
         student = Student(
             name=data["name"],
-            roll=data["roll"],
+            registration_number=data["registration_number"],
             phone=data["phone"],
             hostel=data["hostel"],
             email=data["email"],

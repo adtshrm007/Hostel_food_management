@@ -55,31 +55,65 @@ def test_student_register_and_login(client: TestClient):
         "/auth/student/register",
         json={
             "name": "Test Student",
-            "roll": "21CS001",
+            "registration_number": "21CS001",
             "phone": "9876543210",
             "hostel": "Hostel A",
             "email": "student@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     assert reg_response.status_code == 201, reg_response.text
     data = reg_response.json()
     assert data["email"] == "student@example.com"
-    assert data["roll"] == "21CS001"
-    assert "student_id" in data
+    assert data["registration_number"] == "21CS001"
+    assert "student_id" not in data  # IDs must never be exposed
 
     # Login student
     login_response = client.post(
         "/auth/student/login",
         json={
             "email": "student@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     assert login_response.status_code == 200
     token_data = login_response.json()
     assert "access_token" in token_data
     assert token_data["token_type"] == "bearer"
+
+
+def test_student_register_password_regex_validation(client: TestClient):
+    # Weak password - missing special char
+    res = client.post(
+        "/auth/student/register",
+        json={
+            "name": "Weak Pass",
+            "registration_number": "21CS099",
+            "phone": "9876543299",
+            "hostel": "Hostel A",
+            "email": "weak@example.com",
+            "password": "password123",
+        },
+    )
+    assert res.status_code == 422
+    assert "Password must be 8-16 characters" in res.text
+
+
+def test_email_length_limit(client: TestClient):
+    # Oversized email > 254 chars
+    oversized_email = ("a" * 250) + "@example.com"
+    res = client.post(
+        "/auth/student/register",
+        json={
+            "name": "Long Email",
+            "registration_number": "21CS088",
+            "phone": "9876543288",
+            "hostel": "Hostel A",
+            "email": oversized_email,
+            "password": "Password123!",
+        },
+    )
+    assert res.status_code == 422
 
 
 def test_admin_register_success_with_trimming(client: TestClient):

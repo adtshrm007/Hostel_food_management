@@ -46,11 +46,11 @@ def test_get_student_profile(client: TestClient):
         "/auth/student/register",
         json={
             "name": "Alice Smith",
-            "roll": "21CS002",
+            "registration_number": "21CS002",
             "phone": "9876543211",
             "hostel": "Hostel B",
             "email": "alice@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     assert reg_response.status_code == 201
@@ -60,7 +60,7 @@ def test_get_student_profile(client: TestClient):
         "/auth/student/login",
         json={
             "email": "alice@example.com",
-            "password": "Password123",
+            "password": "Password123!",
         },
     )
     token = login_response.json()["access_token"]
@@ -73,4 +73,4 @@ def test_get_student_profile(client: TestClient):
     assert profile_response.status_code == 200
     profile_data = profile_response.json()
     assert profile_data["name"] == "Alice Smith"
-    assert profile_data["roll"] == "21CS002"
+    assert profile_data["registration_number"] == "21CS002"

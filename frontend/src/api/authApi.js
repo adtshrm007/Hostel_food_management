@@ -27,8 +27,15 @@ export const authApi = {
   },
 
   loginAdmin: async (username, password) => {
-    const payload = typeof username === 'object' ? username : { username, password };
+    const payload = typeof username === 'object'
+      ? { username: typeof username.username === 'string' ? username.username.trim() : username.username, password: username.password }
+      : { username: typeof username === 'string' ? username.trim() : username, password };
     const response = await axiosInstance.post('/auth/admin/login', payload);
+    return response.data;
+  },
+
+  logout: async () => {
+    const response = await axiosInstance.post('/auth/logout');
     return response.data;
   },
 };

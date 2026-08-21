@@ -172,40 +172,30 @@ def get_my_today_preferences(
     response_model=PreferenceResponse,
 )
 def admin_update_student_preference(
-    student_id: int,
+    student_id: str,
     preference_data: AdminPreferenceUpdate,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Create or override one meal preference for a student.
-
-    Administrators are not restricted by the Saturday/Sunday
-    student-selection window.
-
-    The administrator's ID is recorded in updated_by.
-
-    Args:
-        student_id:
-            ID of the student whose preference is being modified.
-
-    Returns:
-        PreferenceResponse:
-            The created or updated preference.
-
-    Raises:
-        HTTPException 400:
-            If the preference data is invalid.
-
-        HTTPException 404:
-            If the target student does not exist.
+    Create or override one meal preference for a student by registration number or ID.
     """
+    from app.services.student_service import get_student_by_registration_number, get_student_by_id
+    s_str = str(student_id).strip()
+    student = get_student_by_registration_number(db=db, registration_number=s_str)
+    if student is None and s_str.isdigit():
+        student = get_student_by_id(db=db, student_id=int(s_str))
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
 
     try:
         preference = admin_update_preference(
             db=db,
             admin_id=current_admin.admin_id,
-            student_id=student_id,
+            student_id=student.student_id,
             meal_date=preference_data.meal_date,
             meal_type=preference_data.meal_type,
             preference=preference_data.preference,

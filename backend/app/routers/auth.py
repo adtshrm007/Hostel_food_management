@@ -3,9 +3,10 @@
 # Authentication API endpoints for students and administrators.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session
 
+from app.config import settings
 from app.core.rate_limiter import rate_limit_auth_requests, rate_limit_registration_requests
 from app.database import get_db
 from app.schemas.auth import (
@@ -42,7 +43,7 @@ def student_register(
         return register_student(
             db=db,
             name=student_data.name,
-            roll=student_data.roll,
+            registration_number=student_data.registration_number,
             phone=student_data.phone,
             hostel=student_data.hostel,
             email=student_data.email,
@@ -89,6 +90,7 @@ def student_forgot_password(
 )
 def student_login(
     login_data: StudentLoginRequest,
+    response: Response,
     db: Session = Depends(get_db),
 ):
     token = authenticate_student(
@@ -105,6 +107,15 @@ def student_login(
                 "WWW-Authenticate": "Bearer"
             },
         )
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=settings.is_cookie_secure,
+        max_age=86400,
+    )
 
     return TokenResponse(
         access_token=token,
@@ -145,6 +156,7 @@ def admin_register(
 )
 def admin_login(
     login_data: AdminLoginRequest,
+    response: Response,
     db: Session = Depends(get_db),
 ):
     """
@@ -155,6 +167,14 @@ def admin_login(
             db=db,
             username=login_data.username,
             password=login_data.password,
+        )
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            secure=settings.is_cookie_secure,
+            max_age=86400,
         )
         return TokenResponse(
             access_token=token,
@@ -173,3 +193,12 @@ def admin_login(
                 "WWW-Authenticate": "Bearer"
             },
         )
+
+
+@router.post("/logout")
+def logout(response: Response):
+    """
+    Clear authentication cookies.
+    """
+    response.delete_cookie("access_token")
+    return {"message": "Logged out successfully"}

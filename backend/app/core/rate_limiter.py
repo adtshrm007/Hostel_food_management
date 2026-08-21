@@ -10,24 +10,51 @@ from fastapi import HTTPException, Request, status
 
 # Sliding window storage: ip_address -> list of request timestamps
 _REQUEST_HISTORY: dict[str, list[float]] = defaultdict(list)
+_REGISTRATION_HISTORY: dict[str, list[float]] = defaultdict(list)
 
 # Rate limit configuration
-DEFAULT_MAX_REQUESTS = 10  # Max requests per window
-DEFAULT_WINDOW_SECONDS = 60  # Window duration in seconds
+DEFAULT_MAX_AUTH_REQUESTS = 5  # Max 5 attempts per window to prevent brute-force
+DEFAULT_WINDOW_SECONDS = 60    # 1 minute window
+
+
+def get_client_ip(request: Request) -> str:
+    """
+    Extract the real client IP address from proxy headers if present.
+    Supports Cloudflare, Nginx, Render, and standard X-Forwarded-For proxy chains.
+    """
+    # 1. Cloudflare header
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+
+    # 2. Standard X-Forwarded-For header (first IP in chain is original client)
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+        if client_ip:
+            return client_ip
+
+    # 3. X-Real-IP header
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    # 4. Direct socket connection client IP fallback
+    return request.client.host if request.client else "127.0.0.1"
 
 
 def rate_limit_auth_requests(
     request: Request,
-    max_requests: int = DEFAULT_MAX_REQUESTS,
+    max_requests: int = DEFAULT_MAX_AUTH_REQUESTS,
     window_seconds: int = DEFAULT_WINDOW_SECONDS,
 ):
     """
-    FastAPI dependency that enforces a rate limit per client IP address.
+    FastAPI dependency that enforces a strict rate limit per client IP address.
 
     Raises:
         HTTPException 429 Too Many Requests if limit is exceeded.
     """
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     now = time.time()
     cutoff = now - window_seconds
 
@@ -38,13 +65,12 @@ def rate_limit_auth_requests(
     if len(history) >= max_requests:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many authentication attempts. Please try again in a minute.",
+            detail="Too many authentication attempts. Please wait 60 seconds before trying again.",
             headers={"Retry-After": str(window_seconds)},
         )
 
     _REQUEST_HISTORY[client_ip].append(now)
 
-_REGISTRATION_HISTORY: dict[str, list[float]] = defaultdict(list)
 
 def rate_limit_registration_requests(
     request: Request,
@@ -55,7 +81,7 @@ def rate_limit_registration_requests(
     FastAPI dependency that enforces a rate limit per client IP address specifically for registrations.
     Limits to 10 requests per day (86400 seconds).
     """
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     now = time.time()
     cutoff = now - window_seconds
 
@@ -66,7 +92,7 @@ def rate_limit_registration_requests(
     if len(history) >= max_requests:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="you have exhusted todays registration req from a single device maximum can send 10 requests",
+            detail="You have exhausted the registration limit for today from this device (maximum 10 requests per 24 hours).",
             headers={"Retry-After": str(window_seconds)},
         )
 

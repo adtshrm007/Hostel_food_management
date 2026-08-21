@@ -26,12 +26,25 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str | None = None
     ADMIN_PASSWORD: str | None = None
 
+    # Environment mode: 'production' or 'development'
+    ENVIRONMENT: str = 'production'
+
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
     ]
+
+    # In production (HTTPS), cookies must be Secure. If COOKIE_SECURE is not explicitly set,
+    # it defaults to True when ENVIRONMENT == 'production' and False for local development.
+    COOKIE_SECURE: bool | None = None
+
+    @property
+    def is_cookie_secure(self) -> bool:
+        if self.COOKIE_SECURE is not None:
+            return self.COOKIE_SECURE
+        return self.ENVIRONMENT.lower() == 'production'
 
     model_config = SettingsConfigDict(
         env_file=('backend/.env', '.env'),

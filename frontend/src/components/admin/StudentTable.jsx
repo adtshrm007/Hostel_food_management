@@ -41,7 +41,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
             }}>
               <th style={{ padding: '1rem 1.25rem' }}>SL NO.</th>
               <th style={{ padding: '1rem 1.25rem' }}>Name</th>
-              <th style={{ padding: '1rem 1.25rem' }}>Roll No.</th>
+              <th style={{ padding: '1rem 1.25rem' }}>Reg No.</th>
               <th style={{ padding: '1rem 1.25rem' }}>Hostel</th>
               <th style={{ padding: '1rem 1.25rem' }}>Contact</th>
               <th style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>Actions</th>
@@ -50,7 +50,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
           <tbody>
             {students.map((student, index) => (
               <tr
-                key={student.student_id}
+                key={student.registration_number}
                 style={{
                   borderBottom: '1px solid var(--border-subtle)',
                   backgroundColor: index % 2 === 0 ? 'var(--color-white)' : 'var(--color-cream)',
@@ -64,7 +64,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
                   {student.name}
                 </td>
                 <td style={{ padding: '1rem 1.25rem' }}>
-                  <span className="badge badge-navy">{student.roll}</span>
+                  <span className="badge badge-navy">{student.registration_number}</span>
                 </td>
                 <td style={{ padding: '1rem 1.25rem', fontWeight: 500 }}>
                   {student.hostel}
@@ -76,7 +76,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
                 <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button
-                      onClick={() => navigate(`/admin/preference/edit?student_id=${student.student_id}`)}
+                      onClick={() => navigate(`/admin/preference/edit?registration_number=${encodeURIComponent(student.registration_number)}`)}
                       className="btn btn-sm btn-primary"
                       title="Override Preference"
                     >

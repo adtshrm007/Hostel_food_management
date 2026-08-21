@@ -17,7 +17,7 @@ from app.core.security import (
 def register_student(
     db: Session,
     name: str,
-    roll: str,
+    registration_number: str,
     phone: str,
     hostel: str,
     email: str,
@@ -27,12 +27,12 @@ def register_student(
     Register a new student.
     """
 
-    existing_roll = db.exec(
-        select(Student).where(Student.roll == roll)
+    existing_reg = db.exec(
+        select(Student).where(Student.registration_number == registration_number)
     ).first()
 
-    if existing_roll:
-        raise ValueError("Roll number already registered")
+    if existing_reg:
+        raise ValueError("Registration number already registered")
 
     existing_phone = db.exec(
         select(Student).where(Student.phone == phone)
@@ -50,7 +50,7 @@ def register_student(
 
     student = Student(
         name=name,
-        roll=roll,
+        registration_number=registration_number,
         phone=phone,
         hostel=hostel,
         email=email,
@@ -83,11 +83,11 @@ def reset_student_password(
 
     if identifier and identifier.strip():
         clean_identifier = identifier.strip().lower()
-        student_roll = (student.roll or "").strip().lower()
+        student_reg = (student.registration_number or "").strip().lower()
         student_phone = (student.phone or "").strip().lower()
 
-        if clean_identifier != student_roll and clean_identifier != student_phone:
-            raise ValueError("Verification failed: Roll number or phone number does not match record.")
+        if clean_identifier != student_reg and clean_identifier != student_phone:
+            raise ValueError("Verification failed: Registration number or phone number does not match record.")
 
     student.password_hash = hash_password(new_password)
     db.add(student)

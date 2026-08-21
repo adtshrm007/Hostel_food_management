@@ -139,29 +139,13 @@ class WeeklyPreferenceSubmission(BaseModel):
 class PreferenceResponse(BaseModel):
     """
     API response schema for a stored meal preference.
-
-    updated_by:
-        Admin ID if an administrator has overridden the preference.
-        None when no administrator override exists.
-
-    updated_at:
-        Timestamp of the latest administrator override.
+    Internal database IDs are excluded.
     """
 
-    preference_id: int
-
-    student_id: int
-
     week_start_date: date
-
     meal_date: date
-
     meal_type: str
-
     preference: str
-
-    updated_by: int | None = None
-
     updated_at: datetime | None = None
 
 

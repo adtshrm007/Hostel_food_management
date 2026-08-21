@@ -109,13 +109,13 @@ const ConfirmModal = ({ open, title, message, confirmLabel, confirmDanger, onCon
 
 // ─── Edit Student Modal ─────────────────────────────────────────────
 const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) => {
-  const [form, setForm] = useState({ name: '', roll: '', phone: '', hostel: '', email: '' });
+  const [form, setForm] = useState({ name: '', registration_number: '', phone: '', hostel: '', email: '' });
 
   useEffect(() => {
     if (student) {
       setForm({
         name: student.name || '',
-        roll: student.roll || '',
+        registration_number: student.registration_number || '',
         phone: student.phone || '',
         hostel: student.hostel || '',
         email: student.email || '',
@@ -134,7 +134,7 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
     // Only send changed fields
     const updates = {};
     if (form.name !== student.name) updates.name = form.name;
-    if (form.roll !== student.roll) updates.roll = form.roll;
+    if (form.registration_number !== student.registration_number) updates.registration_number = form.registration_number;
     if (form.phone !== student.phone) updates.phone = form.phone;
     if (form.hostel !== student.hostel) updates.hostel = form.hostel;
     if (form.email !== student.email) updates.email = form.email;
@@ -142,7 +142,7 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
       onClose();
       return;
     }
-    onSave(student.student_id, updates);
+    onSave(student.registration_number, updates);
   };
 
   const inputStyle = {
@@ -188,8 +188,8 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
               <input id="edit-student-name" name="name" value={form.name} onChange={handleChange} style={inputStyle} required minLength={2} maxLength={100} />
             </div>
             <div>
-              <label htmlFor="edit-student-roll" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)', marginBottom: '0.3rem', display: 'block' }}>Roll Number</label>
-              <input id="edit-student-roll" name="roll" value={form.roll} onChange={handleChange} style={inputStyle} required minLength={2} maxLength={30} />
+              <label htmlFor="edit-student-registration_number" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)', marginBottom: '0.3rem', display: 'block' }}>registration_number Number</label>
+              <input id="edit-student-registration_number" name="registration_number" value={form.registration_number} onChange={handleChange} style={inputStyle} required minLength={2} maxLength={30} />
             </div>
           </div>
 
@@ -285,7 +285,7 @@ const ImportStudentModal = ({ open, onClose, onSuccess }) => {
   };
 
   const handleDownloadSampleCSV = () => {
-    const csvContent = 'name,roll,phone,hostel,email,password\n' +
+    const csvContent = 'name,registration_number,phone,hostel,email,password\n' +
       'Rahul Sharma,2401001,+919876543210,Gita Bhawan Block A,rahul.sharma@example.com,Rahul@123\n' +
       'Ananya Verma,2401002,+919876543211,Gita Bhawan Block B,ananya.verma@example.com,Ananya@123\n';
 
@@ -386,14 +386,14 @@ const ImportStudentModal = ({ open, onClose, onSuccess }) => {
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
               <span className="badge badge-mint">name *</span>
-              <span className="badge badge-mint">roll *</span>
+              <span className="badge badge-mint">registration_number *</span>
               <span className="badge badge-mint">phone *</span>
               <span className="badge badge-mint">hostel *</span>
               <span className="badge badge-mint">email *</span>
               <span className="badge badge-navy">password (optional)</span>
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '0.5rem' }}>
-              * If <code>password</code> is omitted, the student's Roll number will be used as their default password.
+              * If <code>password</code> is omitted, the student's registration_number number will be used as their default password.
             </div>
           </div>
 
@@ -607,13 +607,13 @@ export const ManageStudents = () => {
   };
 
   // ─── Selection Handlers ────────────────────────────────────────
-  const toggleSelect = (studentId) => {
+  const toggleSelect = (registration_number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(studentId)) {
-        next.delete(studentId);
+      if (next.has(registration_number)) {
+        next.delete(registration_number);
       } else {
-        next.add(studentId);
+        next.add(registration_number);
       }
       return next;
     });
@@ -623,7 +623,7 @@ export const ManageStudents = () => {
     if (selectedIds.size === students.length && students.length > 0) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(students.map((s) => s.student_id)));
+      setSelectedIds(new Set(students.map((s) => s.registration_number)));
     }
   };
 
@@ -642,19 +642,19 @@ export const ManageStudents = () => {
     setConfirmModal({
       open: true,
       title: 'Delete Student Permanently',
-      message: `Are you sure you want to permanently delete "${student.name}" (${student.roll})? All associated food preferences will also be deleted. This action cannot be undone.`,
+      message: `Are you sure you want to permanently delete "${student.name}" (${student.registration_number})? All associated food preferences will also be deleted. This action cannot be undone.`,
       confirmLabel: 'Verify & Delete Permanently',
       confirmDanger: true,
       requirePassword: true,
       onConfirm: async (adminPassword) => {
         try {
           setActionLoading(true);
-          await adminApi.deleteStudent(student.student_id, adminPassword);
+          await adminApi.deleteStudent(student.registration_number, adminPassword);
           showToast(`Student "${student.name}" deleted successfully.`);
-          setStudents((prev) => prev.filter((s) => s.student_id !== student.student_id));
+          setStudents((prev) => prev.filter((s) => s.registration_number !== student.registration_number));
           setSelectedIds((prev) => {
             const next = new Set(prev);
-            next.delete(student.student_id);
+            next.delete(student.registration_number);
             return next;
           });
         } catch (err) {
@@ -683,7 +683,7 @@ export const ManageStudents = () => {
           setActionLoading(true);
           await adminApi.deleteStudentsBulk(Array.from(selectedIds), adminPassword);
           showToast(`Successfully deleted ${count} student${count > 1 ? 's' : ''}.`);
-          setStudents((prev) => prev.filter((s) => !selectedIds.has(s.student_id)));
+          setStudents((prev) => prev.filter((s) => !selectedIds.has(s.registration_number)));
           setSelectedIds(new Set());
         } catch (err) {
           showToast(err?.response?.data?.detail || 'Failed to delete students.', 'error');
@@ -701,12 +701,12 @@ export const ManageStudents = () => {
     setEditModal({ open: true, student });
   };
 
-  const handleEditSave = async (studentId, updates) => {
+  const handleEditSave = async (registration_numberOrId, updates) => {
     try {
       setActionLoading(true);
       setEditError('');
-      const updated = await adminApi.updateStudent(studentId, updates);
-      setStudents((prev) => prev.map((s) => (s.student_id === studentId ? updated : s)));
+      const updated = await adminApi.updateStudent(registration_numberOrId, updates);
+      setStudents((prev) => prev.map((s) => (s.registration_number === registration_numberOrId ? { ...s, ...updated } : s)));
       setEditModal({ open: false, student: null });
       showToast('Student details updated successfully.');
     } catch (err) {
@@ -773,7 +773,7 @@ export const ManageStudents = () => {
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--color-green)', fontSize: '0.85rem', padding: '0.25rem 0.6rem' }}
-                onClick={() => setSelectedIds(new Set(students.map((s) => s.student_id)))}
+                onClick={() => setSelectedIds(new Set(students.map((s) => s.registration_number)))}
               >
                 Select all {students.length} students
               </button>
@@ -843,7 +843,7 @@ export const ManageStudents = () => {
                   </th>
                   <th style={{ padding: '1rem 1rem' }}>SL NO.</th>
                   <th style={{ padding: '1rem 1rem' }}>Name</th>
-                  <th style={{ padding: '1rem 1rem' }}>Roll No.</th>
+                  <th style={{ padding: '1rem 1rem' }}>registration_number No.</th>
                   <th style={{ padding: '1rem 1rem' }}>Hostel</th>
                   <th style={{ padding: '1rem 1rem' }}>Contact</th>
                   <th style={{ padding: '1rem 1rem', textAlign: 'right' }}>Actions</th>
@@ -851,10 +851,10 @@ export const ManageStudents = () => {
               </thead>
               <tbody>
                 {students.map((student, index) => {
-                  const isSelected = selectedIds.has(student.student_id);
+                  const isSelected = selectedIds.has(student.registration_number);
                   return (
                     <tr
-                      key={student.student_id}
+                      key={student.registration_number}
                       style={{
                         borderBottom: '1px solid var(--border-subtle)',
                         backgroundColor: isSelected
@@ -864,16 +864,16 @@ export const ManageStudents = () => {
                       }}
                     >
                       <td style={{ padding: '0.85rem 0.75rem', textAlign: 'center' }}>
-                        <label htmlFor={`select-student-checkbox-${student.student_id}`} className="sr-only">
-                          Select {student.name} ({student.roll})
+                        <label htmlFor={`select-student-checkbox-${student.registration_number}`} className="sr-only">
+                          Select {student.name} ({student.registration_number})
                         </label>
                         <input
-                          id={`select-student-checkbox-${student.student_id}`}
-                          name={`selectStudent_${student.student_id}`}
+                          id={`select-student-checkbox-${student.registration_number}`}
+                          name={`selectStudent_${student.registration_number}`}
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelect(student.student_id)}
-                          aria-label={`Select ${student.name} (${student.roll})`}
+                          onChange={() => toggleSelect(student.registration_number)}
+                          aria-label={`Select ${student.name} (${student.registration_number})`}
                           style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-coral)' }}
                         />
                       </td>
@@ -884,7 +884,7 @@ export const ManageStudents = () => {
                         {student.name}
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <span className="badge badge-navy">{student.roll}</span>
+                        <span className="badge badge-navy">{student.registration_number}</span>
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontWeight: 500 }}>
                         {student.hostel}

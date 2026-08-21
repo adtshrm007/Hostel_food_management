@@ -20,7 +20,7 @@ class Student(SQLModel,table=True):
 
     name : str
 
-    roll : str = Field(unique=True, index=True)
+    registration_number : str = Field(unique=True, index=True)
 
     phone : str = Field(unique=True,index=True)
 

@@ -52,7 +52,7 @@
 #       Protected endpoints use these dependencies to require authentication.
 # ===============================================================================
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from jose import JWTError
@@ -64,24 +64,20 @@ from app.models.admin import Admin
 
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/auth/login"
+    tokenUrl="/auth/login",
+    auto_error=False,
 )
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
     """
-    Authenticate the current request using the JWT access token.
-
-    Returns:
-        Student or Admin: Authenticated database user.
-
-    Raises:
-        HTTPException: If the token is invalid, malformed, the role is
-        missing/invalid, or the corresponding user does not exist.
+    Authenticate the current request using HttpOnly cookie or JWT access token header.
     """
+    jwt_token = request.cookies.get("access_token") or token
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,9 +85,12 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    if not jwt_token:
+        raise credentials_exception
+
     # Decode JWT
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(jwt_token)
     except JWTError:
         raise credentials_exception
 
