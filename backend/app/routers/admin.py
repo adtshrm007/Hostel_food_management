@@ -33,7 +33,11 @@
 #       Preference API response schemas.
 # ===============================================================================
 
+import logging
+import traceback
 from datetime import date, timedelta
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlmodel import Session, select
@@ -42,14 +46,15 @@ from app.core.permissions import require_admin
 from app.database import get_db
 from app.core.security import verify_password
 from app.models.admin import Admin
-from app.models.preference import Preference
-from app.schemas.admin import AdminResponse
+from app.models.student import Student
+from app.schemas.admin import AdminResponse, DeleteAdminRequest
 from app.schemas.preference import PreferenceResponse
 from app.schemas.student import StudentResponse, StudentUpdate, BulkDeleteRequest, DeleteStudentRequest
 from app.services.preference_service import get_student_week_preferences
 from app.services.student_service import (
     get_all_students,
     get_student_by_id,
+    get_student_by_registration_number,
     search_students,
     update_student,
     delete_student,
@@ -107,6 +112,22 @@ def list_students(
     return get_all_students(db=db, skip=skip, limit=limit)
 
 
+def _resolve_student(db: Session, identifier: str) -> Student | None:
+    s_str = str(identifier).strip()
+    student = get_student_by_registration_number(db=db, registration_number=s_str)
+    if student is None and s_str.isdigit():
+        student = get_student_by_id(db=db, student_id=int(s_str))
+    return student
+
+
+def _resolve_admin(db: Session, identifier: str) -> Admin | None:
+    a_str = str(identifier).strip()
+    admin = db.exec(select(Admin).where(Admin.username == a_str)).first()
+    if admin is None and a_str.isdigit():
+        admin = db.get(Admin, int(a_str))
+    return admin
+
+
 # SINGLE STUDENT
 
 @router.get(
@@ -114,26 +135,14 @@ def list_students(
     response_model=StudentResponse,
 )
 def get_student(
-    student_id: int,
+    student_id: str,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve a specific student's profile.
-
-    Args:
-        student_id:
-            Database ID of the student.
-
-    Raises:
-        HTTPException 404:
-            If the student does not exist.
+    Retrieve a specific student's profile by roll number or ID.
     """
-
-    student = get_student_by_id(
-        db=db,
-        student_id=student_id,
-    )
+    student = _resolve_student(db=db, identifier=student_id)
 
     if student is None:
         raise HTTPException(
@@ -151,18 +160,14 @@ def get_student(
     response_model=list[PreferenceResponse],
 )
 def get_student_preferences(
-    student_id: int,
+    student_id: str,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve a student's preferences.
+    Retrieve a student's preferences by roll number or ID.
     """
-
-    student = get_student_by_id(
-        db=db,
-        student_id=student_id,
-    )
+    student = _resolve_student(db=db, identifier=student_id)
 
     if student is None:
         raise HTTPException(
@@ -171,7 +176,7 @@ def get_student_preferences(
         )
 
     statement = select(Preference).where(
-        Preference.student_id == student_id,
+        Preference.student_id == student.student_id,
     ).order_by(Preference.meal_date.desc())
 
     return list(db.exec(statement).all())
@@ -184,7 +189,7 @@ def get_student_preferences(
     status_code=status.HTTP_200_OK,
 )
 def delete_single_preference(
-    student_id: int,
+    student_id: str,
     preference_id: int,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
@@ -192,8 +197,7 @@ def delete_single_preference(
     """
     Delete a single preference record for a student.
     """
-
-    student = get_student_by_id(db=db, student_id=student_id)
+    student = _resolve_student(db=db, identifier=student_id)
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -201,7 +205,7 @@ def delete_single_preference(
         )
 
     preference = db.get(Preference, preference_id)
-    if preference is None or preference.student_id != student_id:
+    if preference is None or preference.student_id != student.student_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Preference not found for this student",
@@ -220,15 +224,14 @@ def delete_single_preference(
     status_code=status.HTTP_200_OK,
 )
 def delete_all_student_preferences(
-    student_id: int,
+    student_id: str,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
     Delete all preference records for a student.
     """
-
-    student = get_student_by_id(db=db, student_id=student_id)
+    student = _resolve_student(db=db, identifier=student_id)
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -236,7 +239,7 @@ def delete_all_student_preferences(
         )
 
     statement = select(Preference).where(
-        Preference.student_id == student_id,
+        Preference.student_id == student.student_id,
     )
     all_prefs = db.exec(statement).all()
     count = len(all_prefs)
@@ -251,6 +254,32 @@ def delete_all_student_preferences(
 
 # DAILY MEAL SUMMARY (VEG / NON-VEG COUNTS)
 
+def _normalize_preference_choice(raw_choice: str | None) -> str:
+    if not raw_choice:
+        return ""
+    choice = str(raw_choice).lower().strip().replace("-", "_")
+    if choice in ("veg", "vegetarian"):
+        return "veg"
+    if choice in ("non_veg", "nonveg", "non_vegetarian"):
+        return "non_veg"
+    return choice
+
+
+def _normalize_meal_type(raw_meal: str | None) -> str:
+    if not raw_meal:
+        return ""
+    return str(raw_meal).lower().strip()
+
+
+def _normalize_date_key(raw_date) -> str:
+    if not raw_date:
+        return ""
+    if isinstance(raw_date, (date, datetime)):
+        return raw_date.strftime("%Y-%m-%d")
+    s = str(raw_date).strip()
+    return s.split("T")[0].split(" ")[0]
+
+
 @router.get("/summary")
 def get_daily_summary(
     target_date: date | None = None,
@@ -262,30 +291,18 @@ def get_daily_summary(
     """
     Retrieve Veg and Non-Veg headcount summary for a date range or a specific date.
     """
-    if start_date is not None and end_date is not None:
-        statement = select(Preference).where(
-            Preference.meal_date >= start_date,
-            Preference.meal_date <= end_date,
-        )
-        preferences = db.exec(statement).all()
+    try:
+        if start_date is not None and end_date is not None:
+            statement = select(Preference).where(
+                Preference.meal_date >= start_date,
+                Preference.meal_date <= end_date,
+            )
+            preferences = db.exec(statement).all()
 
-        daily_summaries = {}
-        current = start_date
-        while current <= end_date:
-            date_key = str(current)
-            daily_summaries[date_key] = {
-                "date": date_key,
-                "lunch": {"veg": 0, "non_veg": 0, "total": 0},
-                "dinner": {"veg": 0, "non_veg": 0, "total": 0},
-                "total_veg": 0,
-                "total_non_veg": 0,
-                "total_responses": 0,
-            }
-            current += timedelta(days=1)
-
-        for pref in preferences:
-            date_key = str(pref.meal_date)
-            if date_key not in daily_summaries:
+            daily_summaries = {}
+            current = start_date
+            while current <= end_date:
+                date_key = current.strftime("%Y-%m-%d")
                 daily_summaries[date_key] = {
                     "date": date_key,
                     "lunch": {"veg": 0, "non_veg": 0, "total": 0},
@@ -294,9 +311,60 @@ def get_daily_summary(
                     "total_non_veg": 0,
                     "total_responses": 0,
                 }
-            summary = daily_summaries[date_key]
-            meal = pref.meal_type.lower()
-            choice = pref.preference.lower()
+                current += timedelta(days=1)
+
+            for pref in preferences:
+                date_key = _normalize_date_key(pref.meal_date)
+                if not date_key:
+                    continue
+                if date_key not in daily_summaries:
+                    daily_summaries[date_key] = {
+                        "date": date_key,
+                        "lunch": {"veg": 0, "non_veg": 0, "total": 0},
+                        "dinner": {"veg": 0, "non_veg": 0, "total": 0},
+                        "total_veg": 0,
+                        "total_non_veg": 0,
+                        "total_responses": 0,
+                    }
+                summary = daily_summaries[date_key]
+                meal = _normalize_meal_type(pref.meal_type)
+                choice = _normalize_preference_choice(pref.preference)
+
+                if meal in summary and choice in summary[meal]:
+                    summary[meal][choice] += 1
+                    summary[meal]["total"] += 1
+                    summary["total_responses"] += 1
+                    if choice == "veg":
+                        summary["total_veg"] += 1
+                    elif choice == "non_veg":
+                        summary["total_non_veg"] += 1
+
+            return {
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+                "daily_summaries": daily_summaries,
+            }
+
+        # Single target date mode
+        if target_date is None:
+            target_date = date.today()
+
+        statement = select(Preference).where(Preference.meal_date == target_date)
+        preferences = db.exec(statement).all()
+
+        target_key = target_date.strftime("%Y-%m-%d")
+        summary = {
+            "date": target_key,
+            "lunch": {"veg": 0, "non_veg": 0, "total": 0},
+            "dinner": {"veg": 0, "non_veg": 0, "total": 0},
+            "total_veg": 0,
+            "total_non_veg": 0,
+            "total_responses": 0,
+        }
+
+        for pref in preferences:
+            meal = _normalize_meal_type(pref.meal_type)
+            choice = _normalize_preference_choice(pref.preference)
             if meal in summary and choice in summary[meal]:
                 summary[meal][choice] += 1
                 summary[meal]["total"] += 1
@@ -306,40 +374,38 @@ def get_daily_summary(
                 elif choice == "non_veg":
                     summary["total_non_veg"] += 1
 
+        return summary
+    except Exception as exc:
+        logger.error(f"Error executing get_daily_summary: {exc}\n{traceback.format_exc()}")
+        if start_date is not None and end_date is not None:
+            fallback_summaries = {}
+            curr = start_date
+            while curr <= end_date:
+                dk = curr.strftime("%Y-%m-%d")
+                fallback_summaries[dk] = {
+                    "date": dk,
+                    "lunch": {"veg": 0, "non_veg": 0, "total": 0},
+                    "dinner": {"veg": 0, "non_veg": 0, "total": 0},
+                    "total_veg": 0,
+                    "total_non_veg": 0,
+                    "total_responses": 0,
+                }
+                curr += timedelta(days=1)
+            return {
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+                "daily_summaries": fallback_summaries,
+            }
+
+        target_k = (target_date or date.today()).strftime("%Y-%m-%d")
         return {
-            "start_date": str(start_date),
-            "end_date": str(end_date),
-            "daily_summaries": daily_summaries,
+            "date": target_k,
+            "lunch": {"veg": 0, "non_veg": 0, "total": 0},
+            "dinner": {"veg": 0, "non_veg": 0, "total": 0},
+            "total_veg": 0,
+            "total_non_veg": 0,
+            "total_responses": 0,
         }
-
-    # Single target date mode
-    if target_date is None:
-        target_date = date.today()
-
-    statement = select(Preference).where(Preference.meal_date == target_date)
-    preferences = db.exec(statement).all()
-
-    summary = {
-        "date": str(target_date),
-        "lunch": {"veg": 0, "non_veg": 0, "total": 0},
-        "dinner": {"veg": 0, "non_veg": 0, "total": 0},
-        "total_veg": 0,
-        "total_non_veg": 0,
-        "total_responses": len(preferences),
-    }
-
-    for pref in preferences:
-        meal = pref.meal_type.lower()
-        choice = pref.preference.lower()
-        if meal in summary and choice in summary[meal]:
-            summary[meal][choice] += 1
-            summary[meal]["total"] += 1
-            if choice == "veg":
-                summary["total_veg"] += 1
-            elif choice == "non_veg":
-                summary["total_non_veg"] += 1
-
-    return summary
 
 
 # ALL ADMINS LIST
@@ -381,14 +447,14 @@ def get_pending_admins(
     response_model=AdminResponse,
 )
 def approve_admin_request(
-    target_admin_id: int,
+    target_admin_id: str,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Approve a pending admin registration request.
+    Approve a pending admin registration request by username or ID.
     """
-    target = db.get(Admin, target_admin_id)
+    target = _resolve_admin(db=db, identifier=target_admin_id)
     if target is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -408,14 +474,14 @@ def approve_admin_request(
     status_code=status.HTTP_200_OK,
 )
 def reject_admin_request(
-    target_admin_id: int,
+    target_admin_id: str,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Reject/Delete a pending admin registration request.
+    Reject/Delete a pending admin registration request by username or ID.
     """
-    target = db.get(Admin, target_admin_id)
+    target = _resolve_admin(db=db, identifier=target_admin_id)
     if target is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -428,6 +494,44 @@ def reject_admin_request(
     return {"message": "Admin registration request rejected."}
 
 
+@router.post(
+    "/admins/{target_admin_id}/delete",
+    status_code=status.HTTP_200_OK,
+)
+def delete_admin_record(
+    target_admin_id: str,
+    request: DeleteAdminRequest,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete an approved admin account. Requires password verification of the current admin.
+    Self-deletion is forbidden.
+    """
+    target = _resolve_admin(db=db, identifier=target_admin_id)
+    if target is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Admin account not found",
+        )
+
+    if target.admin_id == current_admin.admin_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own admin account.",
+        )
+
+    if not verify_password(request.admin_password, current_admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password verification failed. Incorrect password.",
+        )
+
+    db.delete(target)
+    db.commit()
+    return {"message": "Admin account permanently deleted."}
+
+
 # STUDENT MANAGEMENT
 
 @router.put(
@@ -435,7 +539,7 @@ def reject_admin_request(
     response_model=StudentResponse,
 )
 def edit_student_details(
-    student_id: int,
+    student_id: str,
     updates: StudentUpdate,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
@@ -443,14 +547,15 @@ def edit_student_details(
     """
     Update a student's profile details.
     """
+    student = _resolve_student(db=db, identifier=student_id)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
     try:
-        student = update_student(db=db, student_id=student_id, updates=updates)
-        if student is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Student not found",
-            )
-        return student
+        updated = update_student(db=db, student_id=student.student_id, updates=updates)
+        return updated
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -463,7 +568,7 @@ def edit_student_details(
     status_code=status.HTTP_200_OK,
 )
 def delete_student_record(
-    student_id: int,
+    student_id: str,
     request: DeleteStudentRequest,
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
@@ -477,12 +582,14 @@ def delete_student_record(
             detail="Password verification failed. Incorrect password.",
         )
 
-    success = delete_student(db=db, student_id=student_id)
-    if not success:
+    student = _resolve_student(db=db, identifier=student_id)
+    if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found",
         )
+
+    success = delete_student(db=db, student_id=student.student_id)
     return {"message": "Student record and all associated preference data permanently deleted."}
 
 
@@ -504,7 +611,15 @@ def bulk_delete_student_records(
             detail="Password verification failed. Incorrect password.",
         )
 
-    deleted_count = delete_students_bulk(db=db, student_ids=request.student_ids)
+    ids_to_delete = []
+    if request.registration_numbers:
+        found_students = db.exec(select(Student).where(Student.registration_number.in_(request.registration_numbers))).all()
+        ids_to_delete.extend([s.student_id for s in found_students])
+    if request.student_ids:
+        ids_to_delete.extend(request.student_ids)
+
+    unique_ids = list(set(ids_to_delete))
+    deleted_count = delete_students_bulk(db=db, student_ids=unique_ids)
     return {
         "message": f"Successfully deleted {deleted_count} student record(s) and their associated preference data."
     }

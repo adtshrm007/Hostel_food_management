@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { extractErrorMessage } from '../../utils/errorHelpers';
 import { User, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { validatePassword, validateEmail } from '../../utils/validation';
 
 export const Login = () => {
   const [searchParams] = useSearchParams();
@@ -26,20 +27,39 @@ export const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Pre-validate password first since it's required for both tabs
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.isValid) {
+      setError(passwordCheck.errorMsg);
+      return;
+    }
+
+    if (activeTab === 'student') {
+      if (!email) {
+        setError('Please enter your email.');
+        return;
+      }
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.isValid) {
+        setError(emailCheck.errorMsg);
+        return;
+      }
+    } else {
+      if (!username) {
+        setError('Please enter your username.');
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
       if (activeTab === 'student') {
-        if (!email || !password) {
-          throw new Error('Please enter both email and password.');
-        }
-        await loginStudent(email, password);
+        await loginStudent(email.trim(), password);
         navigate('/student/menu');
       } else {
-        if (!username || !password) {
-          throw new Error('Please enter both username and password.');
-        }
-        await loginAdmin(username, password);
+        await loginAdmin(username.trim(), password);
         navigate('/admin/dashboard');
       }
     } catch (err) {
@@ -245,12 +265,9 @@ export const Login = () => {
               </Link>
             </>
           ) : (
-            <>
-              Want to request admin access?{' '}
-              <Link to="/register?role=admin" style={{ color: 'var(--color-coral)', fontWeight: 700 }}>
-                Register Admin
-              </Link>
-            </>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)' }}>
+              Admin registrations are managed by active administrators.
+            </span>
           )}
         </div>
       </div>

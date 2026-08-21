@@ -15,18 +15,18 @@ export const adminApi = {
     return response.data;
   },
 
-  getStudentById: async (studentId) => {
-    const response = await axiosInstance.get(`/admin/students/${studentId}`);
+  getStudentById: async (regNumberOrId) => {
+    const response = await axiosInstance.get(`/admin/students/${regNumberOrId}`);
     return response.data;
   },
 
-  getStudentPreferences: async (studentId) => {
-    const response = await axiosInstance.get(`/admin/students/${studentId}/preferences`);
+  getStudentPreferences: async (regNumberOrId) => {
+    const response = await axiosInstance.get(`/admin/students/${regNumberOrId}/preferences`);
     return response.data;
   },
 
-  updateStudentPreference: async (studentId, preferenceData) => {
-    const response = await axiosInstance.put(`/preference/admin/${studentId}`, preferenceData);
+  updateStudentPreference: async (regNumberOrId, preferenceData) => {
+    const response = await axiosInstance.put(`/preference/admin/${regNumberOrId}`, preferenceData);
     return response.data;
   },
 
@@ -53,38 +53,42 @@ export const adminApi = {
     return response.data;
   },
 
-  approveAdmin: async (adminId) => {
-    const response = await axiosInstance.post(`/admin/approve-admin/${adminId}`);
+  approveAdmin: async (usernameOrId) => {
+    const response = await axiosInstance.post(`/admin/approve-admin/${usernameOrId}`);
     return response.data;
   },
 
-  rejectAdmin: async (adminId) => {
-    const response = await axiosInstance.delete(`/admin/reject-admin/${adminId}`);
+  rejectAdmin: async (usernameOrId) => {
+    const response = await axiosInstance.delete(`/admin/reject-admin/${usernameOrId}`);
     return response.data;
   },
 
-  updateStudent: async (studentId, updateData) => {
-    const response = await axiosInstance.put(`/admin/students/${studentId}`, updateData);
+  updateStudent: async (regNumberOrId, updateData) => {
+    const response = await axiosInstance.put(`/admin/students/${regNumberOrId}`, updateData);
     return response.data;
   },
 
-  deleteStudent: async (studentId, adminPassword) => {
-    const response = await axiosInstance.post(`/admin/students/${studentId}/delete`, { admin_password: adminPassword });
+  deleteStudent: async (regNumberOrId, adminPassword) => {
+    const response = await axiosInstance.post(`/admin/students/${regNumberOrId}/delete`, { admin_password: adminPassword });
     return response.data;
   },
 
-  deleteStudentsBulk: async (studentIds, adminPassword) => {
-    const response = await axiosInstance.post('/admin/students/bulk-delete', { student_ids: studentIds, admin_password: adminPassword });
+  deleteStudentsBulk: async (regNumbersOrIds, adminPassword) => {
+    const isRegNumbers = Array.isArray(regNumbersOrIds) && (regNumbersOrIds.length === 0 || typeof regNumbersOrIds[0] === 'string');
+    const payload = isRegNumbers
+      ? { registration_numbers: regNumbersOrIds, admin_password: adminPassword }
+      : { student_ids: regNumbersOrIds, admin_password: adminPassword };
+    const response = await axiosInstance.post('/admin/students/bulk-delete', payload);
     return response.data;
   },
 
-  deletePreference: async (studentId, preferenceId) => {
-    const response = await axiosInstance.delete(`/admin/students/${studentId}/preferences/${preferenceId}`);
+  deletePreference: async (regNumberOrId, preferenceId) => {
+    const response = await axiosInstance.delete(`/admin/students/${regNumberOrId}/preferences/${preferenceId}`);
     return response.data;
   },
 
-  clearAllPreferences: async (studentId) => {
-    const response = await axiosInstance.delete(`/admin/students/${studentId}/preferences`);
+  clearAllPreferences: async (regNumberOrId) => {
+    const response = await axiosInstance.delete(`/admin/students/${regNumberOrId}/preferences`);
     return response.data;
   },
 
@@ -94,6 +98,11 @@ export const adminApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  deleteAdmin: async (usernameOrId, adminPassword) => {
+    const response = await axiosInstance.post(`/admin/admins/${usernameOrId}/delete`, { admin_password: adminPassword });
     return response.data;
   },
 };

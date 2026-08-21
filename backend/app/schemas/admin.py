@@ -50,8 +50,16 @@ class AdminCreate(BaseModel):
 class AdminResponse(BaseModel):
     """
     Safe API response schema for an administrator.
+    Database admin_id is intentionally excluded.
     """
 
-    admin_id: int
     username: str
     is_approved: bool
+
+
+class DeleteAdminRequest(BaseModel):
+    """
+    Request schema for verifying admin password when deleting another admin.
+    """
+
+    admin_password: str

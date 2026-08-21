@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import adminApi from '../../api/adminApi';
+import authApi from '../../api/authApi';
+import useAuth from '../../hooks/useAuth';
 import StudentTable from '../../components/admin/StudentTable';
-import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert, Shield } from 'lucide-react';
+import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert, Shield, Trash2, Eye, EyeOff, UserPlus, Lock, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { validatePassword } from '../../utils/validation';
 
 import { toLocalDateStr } from '../../utils/dateHelpers';
 
@@ -41,6 +44,7 @@ const getDatesFromTodayToNextSunday = () => {
 };
 
 export const Dashboard = () => {
+  const { user } = useAuth();
   const [students, setStudents] = useState([]);
   const [pendingAdmins, setPendingAdmins] = useState([]);
   const [rangeSummary, setRangeSummary] = useState({});
@@ -51,6 +55,23 @@ export const Dashboard = () => {
   const [allAdmins, setAllAdmins] = useState([]);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminListLoading, setAdminListLoading] = useState(false);
+
+  // Modal Sub-states
+  const [modalTab, setModalTab] = useState('list'); // 'list' or 'add'
+  
+  // Register Admin Form State
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regError, setRegError] = useState('');
+  const [regSuccessMsg, setRegSuccessMsg] = useState('');
+  const [regSubmitting, setRegSubmitting] = useState(false);
+
+  // Delete Admin State
+  const [deletingAdmin, setDeletingAdmin] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   // Memoize date calculations to prevent main thread blocking during renders
   const rangeDates = useMemo(() => getDatesFromTodayToNextSunday(), []);
@@ -87,10 +108,10 @@ export const Dashboard = () => {
   }, [start_date, end_date, fetchDashboardData]);
 
   const handleApproveAdmin = async (adminId, username) => {
-    setActionLoadingId(adminId);
+    setActionLoadingId(username);
     setActionSuccessMsg('');
     try {
-      await adminApi.approveAdmin(adminId);
+      await adminApi.approveAdmin(username);
       setActionSuccessMsg(`Successfully granted admin registration request for @${username}!`);
       const updatedPending = await adminApi.getPendingAdmins();
       setPendingAdmins(updatedPending);
@@ -103,10 +124,10 @@ export const Dashboard = () => {
   };
 
   const handleRejectAdmin = async (adminId, username) => {
-    setActionLoadingId(adminId);
+    setActionLoadingId(username);
     setActionSuccessMsg('');
     try {
-      await adminApi.rejectAdmin(adminId);
+      await adminApi.rejectAdmin(username);
       setActionSuccessMsg(`Rejected admin registration request for @${username}.`);
       const updatedPending = await adminApi.getPendingAdmins();
       setPendingAdmins(updatedPending);
@@ -132,7 +153,81 @@ export const Dashboard = () => {
 
   const handleOpenAdminModal = () => {
     setShowAdminModal(true);
+    setModalTab('list');
+    setRegUsername('');
+    setRegPassword('');
+    setShowRegPassword(false);
+    setRegError('');
+    setRegSuccessMsg('');
+    setDeletingAdmin(null);
+    setDeletePassword('');
+    setDeleteError('');
     fetchAllAdmins();
+  };
+
+  const ADMIN_USERNAME_REGEX = /^(?=.{5,20}$)(?!.*__)(?!.*_$)[A-Z][a-zA-Z0-9_]+$/;
+
+  const handleRegisterAdmin = async (e) => {
+    e.preventDefault();
+    setRegError('');
+    setRegSuccessMsg('');
+
+    const username = (regUsername || '').trim();
+    const password = (regPassword || '').trim();
+
+    if (!ADMIN_USERNAME_REGEX.test(username)) {
+      setRegError(
+        'Admin username must be 5-20 characters long, start with an uppercase letter (A-Z), cannot contain consecutive underscores ("__") or end with an underscore ("_"), and contain only letters, numbers, and underscores.'
+      );
+      return;
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.isValid) {
+      setRegError(passwordCheck.errorMsg);
+      return;
+    }
+
+    setRegSubmitting(true);
+    try {
+      await authApi.registerAdmin({ username, password });
+      setRegSuccessMsg(`Successfully submitted registration request for @${username}! It is now pending approval below.`);
+      setRegUsername('');
+      setRegPassword('');
+      // Refresh list of pending admins immediately
+      const updatedPending = await adminApi.getPendingAdmins();
+      setPendingAdmins(updatedPending);
+      fetchAllAdmins();
+    } catch (err) {
+      console.error('Failed to register admin:', err);
+      setRegError(err.response?.data?.detail || 'Failed to register admin. Username may already exist.');
+    } finally {
+      setRegSubmitting(false);
+    }
+  };
+
+  const handleDeleteAdminSubmit = async (e) => {
+    e.preventDefault();
+    setDeleteError('');
+
+    if (!deletingAdmin) return;
+    if (!deletePassword) {
+      setDeleteError('Please enter your password to confirm.');
+      return;
+    }
+
+    setDeleteSubmitting(true);
+    try {
+      await adminApi.deleteAdmin(deletingAdmin.username, deletePassword);
+      setDeletingAdmin(null);
+      setDeletePassword('');
+      fetchAllAdmins();
+    } catch (err) {
+      console.error('Failed to delete admin:', err);
+      setDeleteError(err.response?.data?.detail || 'Incorrect password. Deletion failed.');
+    } finally {
+      setDeleteSubmitting(false);
+    }
   };
 
   const totalStudents = students.length;
@@ -171,7 +266,7 @@ export const Dashboard = () => {
 
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button onClick={handleOpenAdminModal} className="btn" style={{ backgroundColor: 'var(--color-navy)', color: 'var(--color-cream)', border: 'none' }}>
-            <Shield size={18} /> View Admins
+            <Shield size={18} /> Manage Admins
           </button>
           <Link to="/admin/records" className="btn btn-coral">
             <Users size={18} /> Student Directory
@@ -179,7 +274,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Admin List Modal */}
+      {/* Manage Admins Modal */}
       {showAdminModal && (
         <div
           style={{
@@ -187,7 +282,11 @@ export const Dashboard = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             backgroundColor: 'rgba(18, 48, 74, 0.55)', backdropFilter: 'blur(4px)',
           }}
-          onClick={() => setShowAdminModal(false)}
+          onClick={() => {
+            if (!regSubmitting && !deleteSubmitting) {
+              setShowAdminModal(false);
+            }
+          }}
         >
           <div
             style={{
@@ -198,56 +297,293 @@ export const Dashboard = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <Shield size={22} color="var(--color-navy)" />
-                <h3 style={{ margin: 0, color: 'var(--color-navy)', fontSize: '1.2rem' }}>Active Administrators</h3>
+                <h3 style={{ margin: 0, color: 'var(--color-navy)', fontSize: '1.2rem' }}>
+                  {deletingAdmin ? 'Confirm Deletion' : 'Manage Administrators'}
+                </h3>
               </div>
-              <button onClick={() => setShowAdminModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: '4px' }}>
-                <X size={20} />
-              </button>
+              {!regSubmitting && !deleteSubmitting && (
+                <button onClick={() => setShowAdminModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: '4px' }}>
+                  <X size={20} />
+                </button>
+              )}
             </div>
 
-            {adminListLoading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>Loading admins...</div>
-            ) : allAdmins.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>No approved admins found.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '400px', overflowY: 'auto' }}>
-                {allAdmins.map((admin, index) => (
-                  <div
-                    key={admin.username}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '0.85rem 1.15rem', borderRadius: 'var(--radius-md)',
-                      backgroundColor: index % 2 === 0 ? 'var(--color-cream)' : 'var(--color-white)',
-                      border: '1px solid var(--border-subtle)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{
-                        width: '36px', height: '36px', borderRadius: '50%',
-                        backgroundColor: 'var(--color-navy)', color: 'var(--color-cream)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 800, fontSize: '0.85rem', flexShrink: 0,
-                      }}>
-                        {admin.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '0.95rem' }}>@{admin.username}</div>
-                      </div>
-                    </div>
-                    <span className="badge badge-mint" style={{ fontSize: '0.7rem' }}>#{index + 1}</span>
-                  </div>
-                ))}
+            {/* Modal Tab Switcher (hidden when confirming deletion) */}
+            {!deletingAdmin && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('list')}
+                  style={{
+                    padding: '0.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    backgroundColor: modalTab === 'list' ? 'var(--color-navy)' : 'var(--color-cream)',
+                    color: modalTab === 'list' ? 'var(--color-cream)' : 'var(--color-charcoal-muted)',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Shield size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Admin List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalTab('add');
+                    setRegError('');
+                    setRegSuccessMsg('');
+                  }}
+                  style={{
+                    padding: '0.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    backgroundColor: modalTab === 'add' ? 'var(--color-navy)' : 'var(--color-cream)',
+                    color: modalTab === 'add' ? 'var(--color-cream)' : 'var(--color-charcoal-muted)',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <UserPlus size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Add Admin
+                </button>
               </div>
             )}
 
-            <div style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', backgroundColor: 'var(--color-cream)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', fontWeight: 600 }}>
-                Total Active Admins: <strong style={{ color: 'var(--color-navy)' }}>{allAdmins.length}</strong>
-              </span>
-            </div>
+            {/* Deletion Password Request View */}
+            {deletingAdmin ? (
+              <form onSubmit={handleDeleteAdminSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="alert alert-danger" style={{ fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div>⚠️ <strong>Warning:</strong> You are about to permanently delete admin account <strong>@{deletingAdmin.username}</strong>.</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>This operation is irreversible and will remove all their admin access credentials.</div>
+                </div>
+
+                {deleteError && (
+                  <div className="alert alert-danger" style={{ fontSize: '0.85rem' }}>
+                    <AlertCircle size={16} />
+                    <span>{deleteError}</span>
+                  </div>
+                )}
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="admin-delete-password-verify" className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)' }}>
+                    Confirm Your Password <span style={{ color: 'var(--color-danger)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                    <input
+                      id="admin-delete-password-verify"
+                      name="deletePasswordVerify"
+                      type={showRegPassword ? 'text' : 'password'}
+                      className="form-input"
+                      placeholder="Enter YOUR admin password to confirm"
+                      style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                    >
+                      {showRegPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      setDeletingAdmin(null);
+                      setDeletePassword('');
+                      setDeleteError('');
+                    }}
+                    disabled={deleteSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-sm"
+                    style={{ backgroundColor: 'var(--color-danger)', color: 'var(--color-white)', boxShadow: '0 4px 14px rgba(229,57,53,0.3)' }}
+                    disabled={deleteSubmitting}
+                  >
+                    {deleteSubmitting ? 'Verifying & Deleting...' : 'Confirm Delete Admin'}
+                  </button>
+                </div>
+              </form>
+            ) : modalTab === 'list' ? (
+              /* TAB 1: LIST ACTIVE ADMINS */
+              <>
+                {adminListLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>Loading admins...</div>
+                ) : allAdmins.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>No approved admins found.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '350px', overflowY: 'auto' }}>
+                    {allAdmins.map((admin, index) => {
+                      const isSelf = admin.username === user?.username;
+                      return (
+                        <div
+                          key={admin.username}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
+                            backgroundColor: index % 2 === 0 ? 'var(--color-cream)' : 'var(--color-white)',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              width: '36px', height: '36px', borderRadius: '50%',
+                              backgroundColor: isSelf ? 'var(--color-green)' : 'var(--color-navy)',
+                              color: 'var(--color-cream)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 800, fontSize: '0.85rem', flexShrink: 0,
+                            }}>
+                              {admin.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                @{admin.username}
+                                {isSelf && (
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-green)', backgroundColor: 'rgba(46, 155, 98, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {!isSelf && (
+                              <button
+                                onClick={() => setDeletingAdmin(admin)}
+                                className="btn"
+                                style={{
+                                  padding: '0.35rem 0.5rem',
+                                  minHeight: 'auto',
+                                  backgroundColor: 'transparent',
+                                  color: 'var(--color-danger)',
+                                  border: '1px solid var(--color-danger)',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                                title={`Delete @${admin.username}`}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                            <span className="badge badge-navy" style={{ fontSize: '0.7rem' }}>#{index + 1}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', backgroundColor: 'var(--color-cream)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', fontWeight: 600 }}>
+                    Total Active Admins: <strong style={{ color: 'var(--color-navy)' }}>{allAdmins.length}</strong>
+                  </span>
+                </div>
+              </>
+            ) : (
+              /* TAB 2: ADD NEW ADMIN FORM */
+              <form onSubmit={handleRegisterAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="alert alert-info" style={{ fontSize: '0.85rem', margin: 0 }}>
+                  ℹ️ Newly registered admins are added as <strong>pending approval</strong>. They will need to be approved from the requests dashboard to log in.
+                </div>
+
+                {regError && (
+                  <div className="alert alert-danger" style={{ fontSize: '0.85rem', margin: 0 }}>
+                    <AlertCircle size={16} />
+                    <span>{regError}</span>
+                  </div>
+                )}
+
+                {regSuccessMsg && (
+                  <div className="alert alert-success" style={{ fontSize: '0.85rem', margin: 0 }}>
+                    <CheckCircle2 size={16} />
+                    <span>{regSuccessMsg}</span>
+                  </div>
+                )}
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="reg-admin-username-dashboard" className="form-label">New Admin Username</label>
+                  <div style={{ position: 'relative' }}>
+                    <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                    <input
+                      id="reg-admin-username-dashboard"
+                      name="regUsernameDashboard"
+                      type="text"
+                      className="form-input"
+                      style={{ paddingLeft: '2.5rem' }}
+                      placeholder="e.g. Admin_john1"
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      required
+                      disabled={regSubmitting}
+                    />
+                  </div>
+                  <small style={{ fontSize: '0.72rem', color: 'var(--color-charcoal-muted)', marginTop: '0.2rem', display: 'block', lineHeight: 1.3 }}>
+                    5-20 chars, must start with uppercase letter (A-Z), no consecutive ('__') or trailing ('_') underscores.
+                  </small>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="reg-admin-password-dashboard" className="form-label">Create Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                    <input
+                      id="reg-admin-password-dashboard"
+                      name="regPasswordDashboard"
+                      type={showRegPassword ? 'text' : 'password'}
+                      className="form-input"
+                      style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                      placeholder="Create password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                      disabled={regSubmitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                    >
+                      {showRegPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <small style={{ fontSize: '0.72rem', color: 'var(--color-charcoal-muted)', marginTop: '0.2rem', display: 'block', lineHeight: 1.3 }}>
+                    8-16 chars, must contain at least 1 uppercase, 1 lowercase, 1 digit, and 1 special char (@$!%*?&).
+                  </small>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={regSubmitting}
+                  className="btn btn-coral"
+                  style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}
+                >
+                  {regSubmitting ? 'Registering Account...' : 'Register New Admin'}
+                  <ArrowRight size={18} />
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
