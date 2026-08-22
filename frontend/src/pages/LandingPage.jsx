@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, Utensils, ShieldCheck, ArrowRight, CheckCircle2, TrendingDown, Users, Award } from 'lucide-react';
+import { Leaf, Utensils, Key, ArrowRight, CheckCircle2, TrendingDown, Users, Award } from 'lucide-react';
 
 export const LandingPage = () => {
   return (
@@ -57,8 +57,35 @@ export const LandingPage = () => {
               <Link to="/login" className="btn btn-coral btn-lg">
                 Student Login
               </Link>
-              <Link to="/login?role=admin" className="btn btn-outline btn-lg" style={{ borderColor: 'var(--color-cream)', color: 'var(--color-cream)' }}>
-                <ShieldCheck size={20} /> Admin Portal
+              <Link
+                to="/enter-key"
+                title="System Access"
+                aria-label="System Access Key"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  border: '1.5px solid rgba(255,248,237,0.25)',
+                  color: 'rgba(255,248,237,0.45)',
+                  background: 'transparent',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--color-cream)';
+                  e.currentTarget.style.borderColor = 'rgba(255,248,237,0.6)';
+                  e.currentTarget.style.background = 'rgba(255,248,237,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(255,248,237,0.45)';
+                  e.currentTarget.style.borderColor = 'rgba(255,248,237,0.25)';
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <Key size={20} />
               </Link>
             </div>
           </div>

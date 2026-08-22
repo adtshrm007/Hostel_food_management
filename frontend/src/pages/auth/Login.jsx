@@ -5,9 +5,12 @@ import { extractErrorMessage } from '../../utils/errorHelpers';
 import { User, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { validatePassword, validateEmail } from '../../utils/validation';
 
+// Security: admin tab only shown when the key gate has been passed
+const isAdminUnlocked = () => sessionStorage.getItem('admin_portal_unlocked') === 'true';
+
 export const Login = () => {
   const [searchParams] = useSearchParams();
-  const initialRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
+  const initialRole = searchParams.get('role') === 'admin' && isAdminUnlocked() ? 'admin' : 'student';
 
   const [activeTab, setActiveTab] = useState(initialRole);
   const [email, setEmail] = useState('');
@@ -19,6 +22,13 @@ export const Login = () => {
 
   const { loginStudent, loginAdmin } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect to key gate if someone tries to access admin login directly
+  useEffect(() => {
+    if (searchParams.get('role') === 'admin' && !isAdminUnlocked()) {
+      navigate('/enter-key', { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     setError('');
@@ -60,6 +70,8 @@ export const Login = () => {
         navigate('/student/menu');
       } else {
         await loginAdmin(username.trim(), password);
+        // Clear the unlock flag after successful admin login
+        sessionStorage.removeItem('admin_portal_unlocked');
         navigate('/admin/dashboard');
       }
     } catch (err) {
@@ -112,8 +124,7 @@ export const Login = () => {
 
         {/* Role Switcher Tabs */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          display: 'flex',
           gap: '0.5rem',
           backgroundColor: 'var(--color-cream)',
           padding: '0.35rem',
@@ -124,6 +135,7 @@ export const Login = () => {
             type="button"
             onClick={() => setActiveTab('student')}
             style={{
+              flex: 1,
               padding: '0.6rem 0.5rem',
               borderRadius: 'var(--radius-sm)',
               border: 'none',
@@ -142,27 +154,30 @@ export const Login = () => {
             <User size={16} /> Student
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('admin')}
-            style={{
-              padding: '0.6rem 0.5rem',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.4rem',
-              backgroundColor: activeTab === 'admin' ? 'var(--color-navy)' : 'transparent',
-              color: activeTab === 'admin' ? 'var(--color-cream)' : 'var(--color-charcoal-muted)',
-              transition: 'all var(--transition-fast)',
-            }}
-          >
-            <ShieldCheck size={16} /> Admin
-          </button>
+          {/* Admin tab only visible after key gate is unlocked */}
+          {isAdminUnlocked() && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin')}
+              style={{
+                padding: '0.6rem 0.5rem',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                backgroundColor: activeTab === 'admin' ? 'var(--color-navy)' : 'transparent',
+                color: activeTab === 'admin' ? 'var(--color-cream)' : 'var(--color-charcoal-muted)',
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              <ShieldCheck size={16} /> Admin
+            </button>
+          )}
         </div>
 
         {/* Error Notification Banner */}

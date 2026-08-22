@@ -46,8 +46,8 @@ from app.core.permissions import require_admin
 from app.database import get_db
 from app.core.security import verify_password
 from app.models.admin import Admin
-from app.models.student import Student
 from app.models.preference import Preference
+from app.models.student import Student
 from app.schemas.admin import AdminResponse, DeleteAdminRequest
 from app.schemas.preference import PreferenceResponse
 from app.schemas.student import StudentResponse, StudentUpdate, BulkDeleteRequest, DeleteStudentRequest
@@ -521,6 +521,10 @@ def delete_admin_record(
     """
     Permanently delete an approved admin account. Requires password verification of the current admin.
     Self-deletion is forbidden.
+
+    Before deleting, any Preference rows that reference this admin via updated_by
+    are NULLed out (preference records themselves are kept; only the audit attribution
+    is cleared) to satisfy the FK NO ACTION constraint on preference.updated_by.
     """
     target = _resolve_admin(db=db, identifier=target_admin_id)
     if target is None:
@@ -541,9 +545,21 @@ def delete_admin_record(
             detail="Password verification failed. Incorrect password.",
         )
 
+    # Clear FK references in preference rows before deleting the admin.
+    # preference.updated_by has NO ACTION — deleting the admin without this
+    # causes a FK constraint violation (500).
+    affected_preferences = db.exec(
+        select(Preference).where(Preference.updated_by == target.admin_id)
+    ).all()
+    for pref in affected_preferences:
+        pref.updated_by = None
+        pref.updated_at = None
+        db.add(pref)
+
     db.delete(target)
     db.commit()
     return {"message": "Admin account permanently deleted."}
+
 
 
 # STUDENT MANAGEMENT

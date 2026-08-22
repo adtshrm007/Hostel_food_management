@@ -70,6 +70,7 @@ export const Dashboard = () => {
   // Delete Admin State
   const [deletingAdmin, setDeletingAdmin] = useState(null);
   const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
@@ -161,6 +162,7 @@ export const Dashboard = () => {
     setRegSuccessMsg('');
     setDeletingAdmin(null);
     setDeletePassword('');
+    setShowDeletePassword(false);
     setDeleteError('');
     fetchAllAdmins();
   };
@@ -211,8 +213,17 @@ export const Dashboard = () => {
     setDeleteError('');
 
     if (!deletingAdmin) return;
+
     if (!deletePassword) {
       setDeleteError('Please enter your password to confirm.');
+      return;
+    }
+
+    // Client-side validation: the admin's password must meet the standard format
+    // (this mirrors what was set when the account was created)
+    const passwordCheck = validatePassword(deletePassword);
+    if (!passwordCheck.isValid) {
+      setDeleteError(`Invalid password format — ${passwordCheck.errorMsg}`);
       return;
     }
 
@@ -221,6 +232,7 @@ export const Dashboard = () => {
       await adminApi.deleteAdmin(deletingAdmin.username, deletePassword);
       setDeletingAdmin(null);
       setDeletePassword('');
+      setShowDeletePassword(false);
       fetchAllAdmins();
     } catch (err) {
       console.error('Failed to delete admin:', err);
@@ -380,7 +392,7 @@ export const Dashboard = () => {
                     <input
                       id="admin-delete-password-verify"
                       name="deletePasswordVerify"
-                      type={showRegPassword ? 'text' : 'password'}
+                      type={showDeletePassword ? 'text' : 'password'}
                       className="form-input"
                       placeholder="Enter YOUR admin password to confirm"
                       style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
@@ -391,10 +403,11 @@ export const Dashboard = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      onClick={() => setShowDeletePassword((v) => !v)}
+                      aria-label={showDeletePassword ? 'Hide password' : 'Show password'}
                       style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
                     >
-                      {showRegPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showDeletePassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
@@ -406,6 +419,7 @@ export const Dashboard = () => {
                     onClick={() => {
                       setDeletingAdmin(null);
                       setDeletePassword('');
+                      setShowDeletePassword(false);
                       setDeleteError('');
                     }}
                     disabled={deleteSubmitting}

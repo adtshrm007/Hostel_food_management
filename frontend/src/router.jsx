@@ -35,6 +35,7 @@ if (sessionStorage.getItem('chunk_reload')) {
 
 const LandingPage = retryDynamicImport(() => import('./pages/LandingPage'));
 const Login = retryDynamicImport(() => import('./pages/auth/Login'));
+const EnterKey = retryDynamicImport(() => import('./pages/auth/EnterKey'));
 const Register = retryDynamicImport(() => import('./pages/auth/Register'));
 const ForgotPassword = retryDynamicImport(() => import('./pages/auth/ForgotPassword'));
 const MenuView = retryDynamicImport(() => import('./pages/student/MenuView'));
@@ -102,6 +103,10 @@ export const router = createBrowserRouter([
       {
         path: 'login',
         element: <Login />,
+      },
+      {
+        path: 'enter-key',
+        element: <EnterKey />,
       },
       {
         path: 'register',
