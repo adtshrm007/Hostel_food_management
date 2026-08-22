@@ -3,6 +3,8 @@
 # Authentication business logic for the Hostel Food Management API.
 # ===============================================================================
 
+from datetime import timedelta
+
 from sqlmodel import Session, select
 
 from app.models.student import Student
@@ -12,6 +14,10 @@ from app.core.security import (
     verify_password,
     create_access_token,
 )
+
+
+# CONSTANTS
+STUDENT_TOKEN_EXPIRATION = timedelta(hours=1)
 
 
 def register_student(
@@ -69,9 +75,10 @@ def reset_student_password(
     email: str,
     identifier: str | None,
     new_password: str,
-) -> None:
+) -> bool:
     """
     Reset a student's password after verifying email and optional identifier.
+    Returns True if reset was executed, False if account/identifier check failed.
     """
 
     student = db.exec(
@@ -79,7 +86,7 @@ def reset_student_password(
     ).first()
 
     if not student:
-        raise ValueError("No student account found with this email address.")
+        return False
 
     if identifier and identifier.strip():
         clean_identifier = identifier.strip().lower()
@@ -87,18 +94,19 @@ def reset_student_password(
         student_phone = (student.phone or "").strip().lower()
 
         if clean_identifier != student_reg and clean_identifier != student_phone:
-            raise ValueError("Verification failed: Registration number or phone number does not match record.")
+            return False
 
     student.password_hash = hash_password(new_password)
     db.add(student)
     db.commit()
+    return True
 
 
 def authenticate_student(
     db: Session,
     email: str,
     password: str,
-) -> str | None:
+) -> str:
     """
     Authenticate a student using email and password.
     """
@@ -107,22 +115,18 @@ def authenticate_student(
         select(Student).where(Student.email == email)
     ).first()
 
-    if student is None:
-        return None
-
-    if not verify_password(
+    if student is None or not verify_password(
         password,
         student.password_hash
     ):
-        return None
+        raise ValueError("Invalid email or password")
 
     token_data = {
         "sub": str(student.student_id),
         "role": "student",
     }
 
-    from datetime import timedelta
-    return create_access_token(token_data, expires_delta=timedelta(hours=1))
+    return create_access_token(token_data, expires_delta=STUDENT_TOKEN_EXPIRATION)
 
 
 def register_admin(

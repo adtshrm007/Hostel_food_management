@@ -14,7 +14,7 @@ axiosInstance.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       const path = window.location.pathname;
-      const publicPaths = ['/', '/login', '/register', '/forgot-password'];
+      const publicPaths = ['/', '/login', '/register', '/forgot-password', '/enter-key'];
       const isPublic = publicPaths.some((p) => path === p || (p !== '/' && path.startsWith(p)));
       if (!isPublic) {
         window.location.href = '/login';

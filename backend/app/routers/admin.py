@@ -502,6 +502,12 @@ def reject_admin_request(
             detail="Admin account not found",
         )
 
+    if target.admin_id == current_admin.admin_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot reject or delete your own admin account.",
+        )
+
     db.delete(target)
     db.commit()
 

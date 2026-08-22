@@ -71,20 +71,15 @@ def student_forgot_password(
 ):
     """
     Reset a student's password after verifying identity details.
+    Always returns a generic success message to prevent email enumeration.
     """
-    try:
-        reset_student_password(
-            db=db,
-            email=data.email,
-            identifier=data.identifier,
-            new_password=data.new_password,
-        )
-        return {"message": "Password reset successfully. You can now log in with your new password."}
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        )
+    reset_student_password(
+        db=db,
+        email=data.email,
+        identifier=data.identifier,
+        new_password=data.new_password,
+    )
+    return {"message": "If the details provided match an active student account, your password has been reset successfully."}
 
 
 @router.post(
@@ -97,33 +92,33 @@ def student_login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    token = authenticate_student(
-        db=db,
-        email=login_data.email,
-        password=login_data.password,
-    )
+    try:
+        token = authenticate_student(
+            db=db,
+            email=login_data.email,
+            password=login_data.password,
+        )
 
-    if token is None:
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            secure=settings.is_cookie_secure,
+            max_age=86400,
+        )
+
+        return LoginResponse(
+            message="Logged in successfully",
+        )
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail=str(exc),
             headers={
                 "WWW-Authenticate": "Bearer"
             },
         )
-
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        samesite="lax",
-        secure=settings.is_cookie_secure,
-        max_age=86400,
-    )
-
-    return LoginResponse(
-        message="Logged in successfully",
-    )
 
 
 @router.post(
@@ -214,9 +209,9 @@ def get_me(user = Depends(get_current_user)):
     Get the currently authenticated user's profile and role.
     """
     if isinstance(user, Student):
-        return {"role": "student", "user": user}
+        return {"role": "student", "user": StudentResponse.model_validate(user)}
     elif isinstance(user, Admin):
-        return {"role": "admin", "user": user}
+        return {"role": "admin", "user": AdminResponse.model_validate(user)}
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
