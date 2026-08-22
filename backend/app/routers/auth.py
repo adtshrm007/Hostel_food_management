@@ -209,9 +209,9 @@ def get_me(user = Depends(get_current_user)):
     Get the currently authenticated user's profile and role.
     """
     if isinstance(user, Student):
-        return {"role": "student", "user": StudentResponse.model_validate(user)}
+        return {"role": "student", "user": user.model_dump(exclude={"password_hash"})}
     elif isinstance(user, Admin):
-        return {"role": "admin", "user": AdminResponse.model_validate(user)}
+        return {"role": "admin", "user": user.model_dump(exclude={"password_hash"})}
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
