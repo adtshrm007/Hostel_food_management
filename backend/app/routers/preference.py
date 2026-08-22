@@ -65,6 +65,10 @@ from app.services.preference_service import (
     get_student_week_preferences,
     submit_weekly_preferences,
 )
+from app.services.student_service import (
+    get_student_by_id,
+    get_student_by_registration_number,
+)
 from app.utils.date_utils import (
     get_target_week_start,
     get_current_local_date,
@@ -180,11 +184,15 @@ def admin_update_student_preference(
     """
     Create or override one meal preference for a student by registration number or ID.
     """
-    from app.services.student_service import get_student_by_registration_number, get_student_by_id
     s_str = str(student_id).strip()
     student = get_student_by_registration_number(db=db, registration_number=s_str)
     if student is None and s_str.isdigit():
-        student = get_student_by_id(db=db, student_id=int(s_str))
+        try:
+            val = int(s_str)
+            if 0 < val <= 2147483647:
+                student = get_student_by_id(db=db, student_id=val)
+        except (ValueError, OverflowError):
+            pass
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

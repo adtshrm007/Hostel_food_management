@@ -47,6 +47,7 @@ from app.database import get_db
 from app.core.security import verify_password
 from app.models.admin import Admin
 from app.models.student import Student
+from app.models.preference import Preference
 from app.schemas.admin import AdminResponse, DeleteAdminRequest
 from app.schemas.preference import PreferenceResponse
 from app.schemas.student import StudentResponse, StudentUpdate, BulkDeleteRequest, DeleteStudentRequest
@@ -112,11 +113,19 @@ def list_students(
     return get_all_students(db=db, skip=skip, limit=limit)
 
 
+MAX_DB_INT = 2147483647
+
+
 def _resolve_student(db: Session, identifier: str) -> Student | None:
     s_str = str(identifier).strip()
     student = get_student_by_registration_number(db=db, registration_number=s_str)
     if student is None and s_str.isdigit():
-        student = get_student_by_id(db=db, student_id=int(s_str))
+        try:
+            val = int(s_str)
+            if 0 < val <= MAX_DB_INT:
+                student = get_student_by_id(db=db, student_id=val)
+        except (ValueError, OverflowError):
+            pass
     return student
 
 
@@ -124,7 +133,12 @@ def _resolve_admin(db: Session, identifier: str) -> Admin | None:
     a_str = str(identifier).strip()
     admin = db.exec(select(Admin).where(Admin.username == a_str)).first()
     if admin is None and a_str.isdigit():
-        admin = db.get(Admin, int(a_str))
+        try:
+            val = int(a_str)
+            if 0 < val <= MAX_DB_INT:
+                admin = db.get(Admin, val)
+        except (ValueError, OverflowError):
+            pass
     return admin
 
 

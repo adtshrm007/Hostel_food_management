@@ -28,7 +28,7 @@
 #       Handles student registration and authentication.
 # ===============================================================================
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 from app.models.student import Student
 
@@ -77,9 +77,9 @@ def get_student_by_email(
         Student | None:
             Matching student if found, otherwise None.
     """
-
+    cleaned = str(email).strip().lower()
     statement = select(Student).where(
-        Student.email == email
+        func.lower(Student.email) == cleaned
     )
 
     return db.exec(statement).first()
@@ -103,9 +103,9 @@ def get_student_by_registration_number(
         Student | None:
             Matching student if found, otherwise None.
     """
-
+    cleaned = str(registration_number).strip().lower()
     statement = select(Student).where(
-        Student.registration_number == registration_number
+        func.lower(Student.registration_number) == cleaned
     )
 
     return db.exec(statement).first()

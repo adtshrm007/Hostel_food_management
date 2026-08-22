@@ -72,17 +72,35 @@ export const EditPreference = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [studentData, prefData, menuData] = await Promise.all([
-          adminApi.getStudentById(studentId),
-          adminApi.getStudentPreferences(studentId),
-          menuApi.getWeeklyMenu(),
-        ]);
+        setError('');
 
-        setStudent(studentData);
-        setExistingPreferences(prefData);
-        setMenuItems(menuData);
+        let studentData = null;
+        try {
+          studentData = await adminApi.getStudentById(studentId);
+          setStudent(studentData);
+        } catch (sErr) {
+          console.error('Failed to load student info:', sErr);
+        }
+
+        try {
+          const prefData = await adminApi.getStudentPreferences(studentId);
+          setExistingPreferences(Array.isArray(prefData) ? prefData : []);
+        } catch (pErr) {
+          console.error('Failed to load student preferences:', pErr);
+        }
+
+        try {
+          const menuData = await menuApi.getWeeklyMenu();
+          setMenuItems(menuData || []);
+        } catch (mErr) {
+          console.error('Failed to load weekly menu:', mErr);
+        }
+
+        if (!studentData) {
+          setError('Student record not found or could not be loaded.');
+        }
       } catch (err) {
-        console.error('Failed to load student preference data for admin:', err);
+        console.error('Unexpected error loading edit preference data:', err);
         setError('Could not load student details or preferences.');
       } finally {
         setLoading(false);
@@ -381,7 +399,14 @@ export const EditPreference = () => {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: showAll ? 'none' : '420px', overflowY: showAll ? 'visible' : 'auto' }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                maxHeight: showAll ? '400px' : 'none',
+                overflowY: showAll ? 'auto' : 'visible',
+                paddingRight: showAll ? '0.5rem' : '0'
+              }}>
                 {visiblePreferences.map((pref) => (
                   <div
                     key={pref.preference_id}

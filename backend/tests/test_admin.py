@@ -223,3 +223,63 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
     g2 = client.get("/admin/students/B2", headers={"Authorization": f"Bearer {token}"})
     assert g1.status_code == 404
     assert g2.status_code == 404
+
+
+def test_admin_get_and_override_student_preferences_large_roll_no(client: TestClient, session: Session):
+    # 1. Register student with large 10-digit numeric roll number
+    large_roll = "2401433342"
+    reg_response = client.post(
+        "/auth/student/register",
+        json={
+            "name": "Test Large Roll",
+            "registration_number": large_roll,
+            "phone": "9876543219",
+            "hostel": "Hostel A",
+            "email": "largeroll@example.com",
+            "password": "Password123!",
+        },
+    )
+    assert reg_response.status_code == 201
+
+    # 2. Login as admin
+    login_response = client.post(
+        "/auth/admin/login",
+        json={"username": "admin", "password": "admin123"},
+    )
+    token = login_response.cookies.get("access_token")
+
+    # 3. Get student preferences (should be empty initially, status 200, NOT 500)
+    prefs_resp = client.get(
+        f"/admin/students/{large_roll}/preferences",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert prefs_resp.status_code == 200
+    assert prefs_resp.json() == []
+
+    # 4. Admin override a preference
+    override_resp = client.put(
+        f"/preference/admin/{large_roll}",
+        json={
+            "meal_date": "2026-08-25",
+            "meal_type": "lunch",
+            "preference": "non_veg",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert override_resp.status_code == 200
+    data = override_resp.json()
+    assert data["preference"] == "non_veg"
+    assert data["meal_type"] == "lunch"
+    assert "preference_id" in data
+
+    # 5. Get preferences again (should contain 1 record)
+    prefs_resp2 = client.get(
+        f"/admin/students/{large_roll}/preferences",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert prefs_resp2.status_code == 200
+    prefs2 = prefs_resp2.json()
+    assert len(prefs2) == 1
+    assert prefs2[0]["preference"] == "non_veg"
+    assert prefs2[0]["preference_id"] is not None
+

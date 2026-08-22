@@ -139,9 +139,9 @@ class WeeklyPreferenceSubmission(BaseModel):
 class PreferenceResponse(BaseModel):
     """
     API response schema for a stored meal preference.
-    Internal database IDs are excluded.
     """
 
+    preference_id: int | None = None
     week_start_date: date
     meal_date: date
     meal_type: str
