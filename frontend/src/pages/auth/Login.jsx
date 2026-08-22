@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { extractErrorMessage } from '../../utils/errorHelpers';
-import { User, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { User, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Eye, EyeOff, Clock } from 'lucide-react';
 import { validatePassword, validateEmail } from '../../utils/validation';
+
+const STUDENT_MAX_ATTEMPTS = 4;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes cooldown
 
 // Security: admin tab only shown when the key gate has been passed
 const isAdminUnlocked = () => sessionStorage.getItem('admin_portal_unlocked') === 'true';
@@ -20,6 +23,29 @@ export const Login = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Student lockout and attempt state persistence
+  const [studentLockUntil, setStudentLockUntil] = useState(() => {
+    const storedLock = sessionStorage.getItem('student_login_lock_until');
+    if (!storedLock) return null;
+    const lockTime = parseInt(storedLock, 10);
+    if (Date.now() >= lockTime) {
+      sessionStorage.removeItem('student_login_lock_until');
+      sessionStorage.removeItem('student_login_attempts_left');
+      return null;
+    }
+    return lockTime;
+  });
+  const [remainingStudentLockSeconds, setRemainingStudentLockSeconds] = useState(0);
+
+  const [studentAttemptsLeft, setStudentAttemptsLeft] = useState(() => {
+    const storedLock = sessionStorage.getItem('student_login_lock_until');
+    if (storedLock && Date.now() < parseInt(storedLock, 10)) {
+      return 0;
+    }
+    const stored = sessionStorage.getItem('student_login_attempts_left');
+    return stored !== null ? parseInt(stored, 10) : STUDENT_MAX_ATTEMPTS;
+  });
+
   const { loginStudent, loginAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -30,6 +56,37 @@ export const Login = () => {
     }
   }, []);
 
+  // Student lockout timer effect
+  useEffect(() => {
+    if (!studentLockUntil) {
+      setRemainingStudentLockSeconds(0);
+      return;
+    }
+
+    const updateTimer = () => {
+      const diff = Math.max(0, Math.ceil((studentLockUntil - Date.now()) / 1000));
+      setRemainingStudentLockSeconds(diff);
+
+      if (diff <= 0) {
+        sessionStorage.removeItem('student_login_lock_until');
+        sessionStorage.removeItem('student_login_attempts_left');
+        setStudentLockUntil(null);
+        setStudentAttemptsLeft(STUDENT_MAX_ATTEMPTS);
+        setError('');
+      }
+    };
+
+    updateTimer();
+    const timerId = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerId);
+  }, [studentLockUntil]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     setError('');
   }, [activeTab]);
@@ -37,6 +94,18 @@ export const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (activeTab === 'student') {
+      if (studentLockUntil && Date.now() < studentLockUntil) {
+        setError(`Too many failed attempts. Student login is locked for another ${formatTime(remainingStudentLockSeconds)}.`);
+        return;
+      }
+
+      if (studentAttemptsLeft <= 0) {
+        setError('Too many failed attempts. Access to student login is locked.');
+        return;
+      }
+    }
 
     // Pre-validate password first since it's required for both tabs
     const passwordCheck = validatePassword(password);
@@ -67,6 +136,8 @@ export const Login = () => {
     try {
       if (activeTab === 'student') {
         await loginStudent(email.trim(), password);
+        sessionStorage.removeItem('student_login_attempts_left');
+        sessionStorage.removeItem('student_login_lock_until');
         navigate('/student/menu');
       } else {
         await loginAdmin(username.trim(), password);
@@ -76,7 +147,23 @@ export const Login = () => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError(extractErrorMessage(err, 'Login failed. Please check credentials.'));
+      if (activeTab === 'student') {
+        const nextAttempts = studentAttemptsLeft - 1;
+        setStudentAttemptsLeft(nextAttempts);
+        sessionStorage.setItem('student_login_attempts_left', nextAttempts.toString());
+
+        if (nextAttempts > 0) {
+          const apiError = extractErrorMessage(err, 'Login failed. Please check credentials.');
+          setError(`${apiError} You have ${nextAttempts} attempt${nextAttempts === 1 ? '' : 's'} left.`);
+        } else {
+          const expiryTime = Date.now() + LOCKOUT_DURATION_MS;
+          sessionStorage.setItem('student_login_lock_until', expiryTime.toString());
+          setStudentLockUntil(expiryTime);
+          setError('Too many failed attempts. Student login is locked for 5 minutes.');
+        }
+      } else {
+        setError(extractErrorMessage(err, 'Login failed. Please check credentials.'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -98,7 +185,7 @@ export const Login = () => {
         boxShadow: 'var(--shadow-lg)',
       }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
           <img
             src="/logo.webp"
             alt="Gita-Bhojanalay Logo"
@@ -120,6 +207,36 @@ export const Login = () => {
           <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.92rem' }}>
             Access your Gita-Bhojanalay food management account
           </p>
+
+          {/* Student attempts / timer lock badge */}
+          {activeTab === 'student' && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.35rem 0.85rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  borderRadius: 'var(--radius-pill)',
+                  backgroundColor: studentLockUntil || studentAttemptsLeft <= 1 ? 'rgba(229, 57, 53, 0.12)' : studentAttemptsLeft <= 2 ? 'rgba(255, 111, 97, 0.12)' : 'var(--color-cream)',
+                  color: studentLockUntil || studentAttemptsLeft <= 1 ? 'var(--color-danger)' : studentAttemptsLeft <= 2 ? 'var(--color-coral)' : 'var(--color-navy)',
+                  border: '1px solid currentColor',
+                }}
+              >
+                {studentLockUntil ? (
+                  <>
+                    <Clock size={14} /> Lockout expires in {formatTime(remainingStudentLockSeconds)}
+                  </>
+                ) : studentAttemptsLeft > 0 ? (
+                  `You have ${studentAttemptsLeft} attempt${studentAttemptsLeft === 1 ? '' : 's'} left`
+                ) : (
+                  '0 attempts left — Login Locked'
+                )}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Role Switcher Tabs */}
@@ -204,6 +321,7 @@ export const Login = () => {
                   placeholder="e.g. student@hostel.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={submitting || (activeTab === 'student' && (studentAttemptsLeft <= 0 || !!studentLockUntil))}
                   required
                 />
               </div>
@@ -248,12 +366,14 @@ export const Login = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={submitting || (activeTab === 'student' && (studentAttemptsLeft <= 0 || !!studentLockUntil))}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
+                disabled={activeTab === 'student' && (studentAttemptsLeft <= 0 || !!studentLockUntil)}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: (activeTab === 'student' && (studentAttemptsLeft <= 0 || !!studentLockUntil)) ? 'not-allowed' : 'pointer', color: 'var(--color-charcoal-muted)', padding: 0, display: 'flex', alignItems: 'center' }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -262,11 +382,17 @@ export const Login = () => {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || (activeTab === 'student' && (studentAttemptsLeft <= 0 || !!studentLockUntil))}
             className="btn btn-primary"
             style={{ width: '100%', padding: '0.85rem' }}
           >
-            {submitting ? 'Authenticating...' : `Log In as ${activeTab === 'student' ? 'Student' : 'Admin'}`}
+            {submitting
+              ? 'Authenticating...'
+              : activeTab === 'student' && studentLockUntil
+              ? `Locked (${formatTime(remainingStudentLockSeconds)})`
+              : activeTab === 'student' && studentAttemptsLeft <= 0
+              ? 'Access Locked'
+              : `Log In as ${activeTab === 'student' ? 'Student' : 'Admin'}`}
             <ArrowRight size={18} />
           </button>
         </form>
@@ -291,3 +417,4 @@ export const Login = () => {
 };
 
 export default Login;
+
