@@ -4,7 +4,7 @@ import menuApi from '../../api/menuApi';
 import PreferenceCard from '../../components/student/PreferenceCard';
 import Loader from '../../components/common/Loader';
 import { isSelectionWindowOpen, getUpcomingWeekDays } from '../../utils/dateHelpers';
-import { Calendar, CheckCircle2, AlertCircle, ShieldAlert, Send } from 'lucide-react';
+import { Calendar, CheckCircle2, AlertCircle, ShieldAlert, Send, Save, Lock, FileCheck } from 'lucide-react';
 
 export const PreferenceSelect = () => {
   const [loading, setLoading] = useState(true);
@@ -15,25 +15,31 @@ export const PreferenceSelect = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [existingPreferences, setExistingPreferences] = useState([]);
   const [selections, setSelections] = useState({}); // key: `${dateStr}_${mealType}` -> 'veg' | 'non_veg'
+  const [windowOpen, setWindowOpen] = useState(false);
 
-  const windowOpen = isSelectionWindowOpen();
   const weekDays = getUpcomingWeekDays();
+
+  // Check if student has finalized their weekly submission
+  const isFinalized = existingPreferences.length > 0 && existingPreferences.every((p) => p.is_submitted);
+  const isDraftSaved = existingPreferences.length > 0 && existingPreferences.some((p) => !p.is_submitted);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [menuData, prefData] = await Promise.all([
+        const [menuData, prefData, windowStatus] = await Promise.all([
           menuApi.getWeeklyMenu(),
           studentApi.getWeeklyPreferences(),
+          studentApi.getTodayWindowStatus().catch(() => ({ is_open: isSelectionWindowOpen() })),
         ]);
 
         setMenuItems(menuData);
-        setExistingPreferences(prefData);
+        setExistingPreferences(prefData || []);
+        setWindowOpen(windowStatus?.is_open ?? isSelectionWindowOpen());
 
         // Pre-fill selections from stored preferences
         const initialSelections = {};
-        prefData.forEach((pref) => {
+        (prefData || []).forEach((pref) => {
           const key = `${pref.meal_date}_${pref.meal_type.toLowerCase()}`;
           initialSelections[key] = pref.preference.toLowerCase();
         });
@@ -49,7 +55,9 @@ export const PreferenceSelect = () => {
     loadData();
   }, []);
 
+
   const handleSelectChoice = (dateStr, mealType, choice) => {
+    if (isFinalized || !windowOpen) return;
     const key = `${dateStr}_${mealType}`;
     setSelections((prev) => ({
       ...prev,
@@ -68,7 +76,7 @@ export const PreferenceSelect = () => {
     return count;
   };
 
-  const handleSubmitAll = async () => {
+  const handleSubmitAll = async (isFinal = false) => {
     setError('');
     setSuccessMsg('');
 
@@ -94,14 +102,20 @@ export const PreferenceSelect = () => {
     });
 
     if (missingField || preferencesList.length < 14) {
-      setError('Please select a food preference (Veg or Non-Veg) for all 14 meal slots before submitting.');
+      setError('Please select a food preference (Veg or Non-Veg) for all 14 meal slots before saving.');
       return;
     }
 
     setSubmitting(true);
     try {
-      await studentApi.submitWeeklyPreferences(preferencesList);
-      setSuccessMsg('Your 14 weekly meal preferences have been successfully submitted!');
+      const saved = await studentApi.submitWeeklyPreferences(preferencesList, isFinal);
+      setExistingPreferences(saved);
+
+      if (isFinal) {
+        setSuccessMsg('Your 14 weekly meal preferences have been FINALIZED and submitted! Choices are now locked.');
+      } else {
+        setSuccessMsg('Draft preferences saved successfully! You can modify choices anytime until the window closes or click Final Submit.');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error('Failed to submit preferences:', err);
@@ -123,19 +137,26 @@ export const PreferenceSelect = () => {
       <div className="page-header-banner">
         <div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-            <span className={`badge ${windowOpen ? 'badge-mint' : 'badge-coral'}`}>
-              <Calendar size={14} /> {windowOpen ? 'Selection Window Open' : 'Window Closed'}
+            <span className={`badge ${windowOpen ? (isFinalized ? 'badge-coral' : 'badge-mint') : 'badge-coral'}`}>
+              <Calendar size={14} /> {isFinalized ? 'Finalized & Locked' : (windowOpen ? 'Selection Window Open' : 'Window Closed')}
             </span>
             <span className="badge badge-navy">
               Upcoming Week ({weekDays[0].formattedDate} – {weekDays[6].formattedDate})
             </span>
+            {isDraftSaved && !isFinalized && (
+              <span className="badge badge-mint" style={{ backgroundColor: '#fff8e1', color: '#b45309', borderColor: '#fde68a' }}>
+                <FileCheck size={14} /> Draft Saved
+              </span>
+            )}
           </div>
 
           <h2 style={{ color: 'var(--color-cream)', marginBottom: '0.25rem' }}>
             Select Upcoming Week Preferences
           </h2>
           <p style={{ color: 'var(--color-mint)', fontSize: '0.95rem', margin: 0 }}>
-            Choose Veg or Non-Veg for all 14 lunch and dinner slots.
+            {isFinalized
+              ? 'Your preferences for this week are locked and finalized.'
+              : 'Choose Veg or Non-Veg for all 14 lunch and dinner slots.'}
           </p>
         </div>
 
@@ -172,11 +193,20 @@ export const PreferenceSelect = () => {
         </div>
       )}
 
-      {!windowOpen && (
+      {isFinalized && (
+        <div className="alert alert-info" style={{ marginBottom: '1.5rem' }}>
+          <Lock size={20} />
+          <span>
+            <strong>Weekly Submission Finalized:</strong> Your preferences for this week have been permanently submitted. If you need any changes, please contact an administrator to perform an override.
+          </span>
+        </div>
+      )}
+
+      {!windowOpen && !isFinalized && (
         <div className="alert alert-info" style={{ marginBottom: '1.5rem' }}>
           <ShieldAlert size={20} />
           <span>
-            <strong>Preference Selection Closed:</strong> Student preference submissions and updates are permitted only on Saturdays and Sundays. You can review your current saved selections below.
+            <strong>Preference Selection Closed:</strong> Student preference submissions are permitted only on Saturdays and Sundays. Draft selections have been automatically finalized for the upcoming week.
           </span>
         </div>
       )}
@@ -217,6 +247,7 @@ export const PreferenceSelect = () => {
                   selectedChoice={selections[lunchKey]}
                   onSelect={(choice) => handleSelectChoice(day.dateStr, 'lunch', choice)}
                   isAdminOverridden={!!lunchExisting?.updated_by}
+                  disabled={isFinalized || !windowOpen}
                 />
 
                 <PreferenceCard
@@ -228,6 +259,7 @@ export const PreferenceSelect = () => {
                   selectedChoice={selections[dinnerKey]}
                   onSelect={(choice) => handleSelectChoice(day.dateStr, 'dinner', choice)}
                   isAdminOverridden={!!dinnerExisting?.updated_by}
+                  disabled={isFinalized || !windowOpen}
                 />
               </div>
             </div>
@@ -236,28 +268,45 @@ export const PreferenceSelect = () => {
       </div>
 
       {/* Submit Action Bar */}
-      <div className="sticky-submit-bar">
-        <div>
-          <div style={{ fontWeight: 800, color: 'var(--color-navy)', fontSize: '1.1rem' }}>
-            Ready to Submit Week Preferences?
+      {!isFinalized && windowOpen && (
+        <div className="sticky-submit-bar">
+          <div>
+            <div style={{ fontWeight: 800, color: 'var(--color-navy)', fontSize: '1.1rem' }}>
+              Save or Finalize Week Preferences?
+            </div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--color-charcoal-muted)' }}>
+              {calculateSelectedCount() === 14 ? '✅ All 14 meal slots selected' : `⚠️ ${14 - calculateSelectedCount()} meal slots remaining`}
+            </div>
           </div>
-          <div style={{ fontSize: '0.88rem', color: 'var(--color-charcoal-muted)' }}>
-            {calculateSelectedCount() === 14 ? '✅ All 14 meal slots selected' : `⚠️ ${14 - calculateSelectedCount()} meal slots remaining`}
+
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleSubmitAll(false)}
+              disabled={submitting || calculateSelectedCount() < 14}
+              className="btn btn-secondary"
+              style={{ fontWeight: 700 }}
+            >
+              <Save size={18} />
+              {submitting ? 'Saving Draft...' : 'Save Draft Preferences'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSubmitAll(true)}
+              disabled={submitting || calculateSelectedCount() < 14}
+              className="btn btn-primary btn-lg"
+              style={{ fontWeight: 800 }}
+            >
+              <Send size={18} />
+              {submitting ? 'Finalizing...' : 'Final Submit Preferences'}
+            </button>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={handleSubmitAll}
-          disabled={submitting || !windowOpen || calculateSelectedCount() < 14}
-          className="btn btn-primary btn-lg"
-        >
-          <Send size={18} />
-          {submitting ? 'Submitting...' : 'Submit 14 Preferences'}
-        </button>
-      </div>
+      )}
     </div>
   );
 };
 
 export default PreferenceSelect;
+

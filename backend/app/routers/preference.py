@@ -59,11 +59,14 @@ from app.schemas.preference import (
     AdminPreferenceUpdate,
     PreferenceResponse,
     WeeklyPreferenceSubmission,
+    TodayPreferenceSubmission,
 )
 from app.services.preference_service import (
     admin_update_preference,
     get_student_week_preferences,
     submit_weekly_preferences,
+    is_today_window_open,
+    submit_today_preferences,
 )
 from app.services.student_service import (
     get_student_by_id,
@@ -73,6 +76,7 @@ from app.utils.date_utils import (
     get_target_week_start,
     get_current_local_date,
 )
+
 
 
 router = APIRouter()
@@ -114,6 +118,7 @@ def submit_weekly_preference(
             student_id=current_student.student_id,
             preferences=submission.preferences,
             current_date=get_current_local_date(),
+            is_final=submission.is_final,
         )
 
         return preferences
@@ -169,7 +174,53 @@ def get_my_today_preferences(
         target_date=today,
     )
 
+
+@router.get(
+    "/today-window",
+)
+def check_today_window_status(
+    current_student: Student = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """
+    Check if the preference window for today is open.
+    """
+    today = get_current_local_date()
+    open_status = is_today_window_open(db=db, current_date=today)
+    return {"is_open": open_status, "today_date": str(today)}
+
+
+@router.put(
+    "/today",
+    response_model=list[PreferenceResponse],
+)
+def submit_today_preference_endpoint(
+    submission: TodayPreferenceSubmission,
+    current_student: Student = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """
+    Submit or update preferences specifically for today's lunch and dinner
+    when today's window is explicitly open.
+    """
+    today = get_current_local_date()
+    try:
+        prefs = submit_today_preferences(
+            db=db,
+            student_id=current_student.student_id,
+            lunch_pref=submission.lunch,
+            dinner_pref=submission.dinner,
+            current_date=today,
+        )
+        return prefs
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
 # ADMIN ENDPOINT
+
 
 @router.put(
     "/admin/{student_id}",

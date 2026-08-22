@@ -63,3 +63,14 @@ class DeleteAdminRequest(BaseModel):
     """
 
     admin_password: str
+
+
+class WindowOverrideResponse(BaseModel):
+    """
+    Response schema for daily window override status and remaining toggles.
+    """
+
+    target_date: str
+    is_open: bool
+    toggle_count: int
+    toggles_left: int

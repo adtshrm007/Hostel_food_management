@@ -48,10 +48,15 @@ from app.core.security import verify_password
 from app.models.admin import Admin
 from app.models.preference import Preference
 from app.models.student import Student
-from app.schemas.admin import AdminResponse, DeleteAdminRequest
+from app.schemas.admin import AdminResponse, DeleteAdminRequest, WindowOverrideResponse
 from app.schemas.preference import PreferenceResponse
 from app.schemas.student import StudentResponse, StudentUpdate, BulkDeleteRequest, DeleteStudentRequest
-from app.services.preference_service import get_student_week_preferences
+from app.services.preference_service import (
+    get_student_week_preferences,
+    get_window_override,
+    toggle_window_override,
+    is_today_window_open,
+)
 from app.services.student_service import (
     get_all_students,
     get_student_by_id,
@@ -62,7 +67,8 @@ from app.services.student_service import (
     delete_students_bulk,
     bulk_import_students_service,
 )
-from app.utils.date_utils import get_upcoming_week_start
+from app.utils.date_utils import get_upcoming_week_start, get_current_local_date
+
 
 
 router = APIRouter()
@@ -741,6 +747,68 @@ async def import_students_file(
             "message": f"Successfully imported {len(imported_students)} student record(s) into the database.",
             "imported_count": len(imported_students),
         }
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+# MANAGE PREFERENCE SELECTION WINDOW OVERRIDE
+
+@router.get(
+    "/window-override",
+    response_model=WindowOverrideResponse,
+)
+def get_window_override_status(
+    target_date: date | None = None,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Get the window open/close override status and remaining toggle count for a specific date.
+    """
+    if target_date is None:
+        target_date = get_current_local_date()
+
+    override = get_window_override(db=db, target_date=target_date)
+    is_open = is_today_window_open(db=db, current_date=target_date)
+    toggle_count = override.toggle_count if override else 0
+    toggles_left = max(0, 3 - toggle_count)
+
+    return WindowOverrideResponse(
+        target_date=str(target_date),
+        is_open=is_open,
+        toggle_count=toggle_count,
+        toggles_left=toggles_left,
+    )
+
+
+@router.post(
+    "/window-override",
+    response_model=WindowOverrideResponse,
+)
+def toggle_window_override_status(
+    target_date: date | None = Query(None),
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Toggle the window open/close override state for a specific date.
+    Enforces a max 3 toggles per day limit across all admins.
+    """
+    if target_date is None:
+        target_date = get_current_local_date()
+
+    try:
+        override = toggle_window_override(db=db, target_date=target_date, admin_id=current_admin.admin_id)
+        toggles_left = max(0, 3 - override.toggle_count)
+        return WindowOverrideResponse(
+            target_date=str(target_date),
+            is_open=override.is_open,
+            toggle_count=override.toggle_count,
+            toggles_left=toggles_left,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

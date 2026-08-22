@@ -103,6 +103,8 @@ class Preference(SQLModel, table=True):
 
     preference: str
 
+    is_submitted: bool = Field(default=False)
+
     updated_by: int | None = Field(
         default=None,
         foreign_key="admin.admin_id"

@@ -36,8 +36,9 @@ def session_fixture():
 
 @pytest.fixture(name="client")
 def client_fixture(session: Session):
-    from app.core.rate_limiter import _REQUEST_HISTORY
+    from app.core.rate_limiter import _REQUEST_HISTORY, _REGISTRATION_HISTORY
     _REQUEST_HISTORY.clear()
+    _REGISTRATION_HISTORY.clear()
     def get_session_override():
         return session
 

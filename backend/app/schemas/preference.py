@@ -118,15 +118,6 @@ class PreferenceItem(BaseModel):
 class WeeklyPreferenceSubmission(BaseModel):
     """
     Request schema for submitting a complete week's preferences.
-
-    Exactly 14 preference items are required:
-
-        7 days × 2 meals = 14 preferences
-
-    This schema only guarantees that exactly 14 items are supplied.
-
-    The service layer must additionally verify that those 14 items
-    represent every unique day/meal combination exactly once.
     """
 
     preferences: list[PreferenceItem] = Field(
@@ -134,6 +125,7 @@ class WeeklyPreferenceSubmission(BaseModel):
         min_length=14,
         max_length=14,
     )
+    is_final: bool = Field(default=False)
 
 
 class PreferenceResponse(BaseModel):
@@ -146,7 +138,9 @@ class PreferenceResponse(BaseModel):
     meal_date: date
     meal_type: str
     preference: str
+    is_submitted: bool = False
     updated_at: datetime | None = None
+
 
 
 class AdminPreferenceUpdate(BaseModel):
@@ -194,3 +188,20 @@ class AdminPreferenceUpdate(BaseModel):
             )
 
         return value
+
+
+class TodayPreferenceSubmission(BaseModel):
+    """
+    Request schema for submitting preferences for today's lunch and dinner.
+    """
+
+    lunch: str
+    dinner: str
+
+    @field_validator("lunch", "dinner")
+    @classmethod
+    def validate_pref(cls, value: str) -> str:
+        val = value.lower().strip()
+        if val not in VALID_PREFERENCES:
+            raise ValueError("Preference must be 'veg' or 'non_veg'")
+        return val

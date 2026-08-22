@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import studentApi from '../../api/studentApi';
 import Loader from '../../components/common/Loader';
-import { User, Hash, Home, Calendar, Clock, Utensils, Leaf, Drumstick, ArrowLeft } from 'lucide-react';
+import { User, Hash, Home, Calendar, Clock, Utensils, Leaf, Drumstick, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const TodayPreference = () => {
@@ -14,11 +14,12 @@ export const TodayPreference = () => {
   useEffect(() => {
     const fetchTodayPrefs = async () => {
       try {
+        setLoading(true);
         const data = await studentApi.getTodayPreferences();
-        setPreferences(data);
+        setPreferences(data || []);
       } catch (err) {
-        console.error('Failed to load today\'s preferences:', err);
-        setError('Could not load today\'s preferences. Please try again.');
+        console.error("Failed to load today's preferences:", err);
+        setError("Could not load today's preferences. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -126,11 +127,16 @@ export const TodayPreference = () => {
             </div>
           </div>
 
-          {/* Preferences Section */}
+          {/* Read-Only Preferences Section */}
           <div>
-            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--color-navy)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
-              <Utensils size={20} color="var(--color-green)" /> Selected Meals
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '2px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, color: 'var(--color-navy)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Utensils size={20} color="var(--color-green)" /> Today's Meal Selections
+              </h3>
+              <span className="badge badge-navy" style={{ fontSize: '0.75rem' }}>
+                <ShieldAlert size={12} /> Static View
+              </span>
+            </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* Lunch row */}
@@ -141,8 +147,7 @@ export const TodayPreference = () => {
                 padding: '1.25rem',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '12px',
-                transition: 'all 0.2s ease',
-              }} className="hover-lift">
+              }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ backgroundColor: '#fff8e1', padding: '0.6rem', borderRadius: '50%' }}>
                     <Clock size={20} color="#f59e0b" />
@@ -165,8 +170,7 @@ export const TodayPreference = () => {
                 padding: '1.25rem',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '12px',
-                transition: 'all 0.2s ease',
-              }} className="hover-lift">
+              }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ backgroundColor: '#f0f5ff', padding: '0.6rem', borderRadius: '50%' }}>
                     <Clock size={20} color="#3b82f6" />

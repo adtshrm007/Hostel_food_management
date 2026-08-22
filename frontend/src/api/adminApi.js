@@ -105,6 +105,19 @@ export const adminApi = {
     const response = await axiosInstance.post(`/admin/admins/${usernameOrId}/delete`, { admin_password: adminPassword });
     return response.data;
   },
+
+  getWindowOverride: async (targetDate) => {
+    const url = targetDate ? `/admin/window-override?target_date=${targetDate}` : '/admin/window-override';
+    const response = await axiosInstance.get(url);
+    return response.data;
+  },
+
+  toggleWindowOverride: async (targetDate) => {
+    const url = targetDate ? `/admin/window-override?target_date=${targetDate}` : '/admin/window-override';
+    const response = await axiosInstance.post(url);
+    return response.data;
+  },
 };
+
 
 export default adminApi;

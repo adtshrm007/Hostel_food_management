@@ -15,5 +15,6 @@ from app.models.student import Student
 from app.models.admin import Admin
 from app.models.menu import Menu
 from app.models.preference import Preference
+from app.models.window import WindowOverride
 
-__all__ = ["Student", "Admin", "Menu", "Preference"]
+__all__ = ["Student", "Admin", "Menu", "Preference", "WindowOverride"]

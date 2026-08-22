@@ -171,6 +171,24 @@ def get_student_preference(
 
 # WEEKLY PREFERENCE RETRIEVAL
 
+def auto_finalize_draft_preferences(db: Session, current_date: date):
+    """
+    If today's selection window is closed (including admin overrides),
+    automatically finalize any saved draft preferences (is_submitted = False -> True).
+    """
+    if not is_today_window_open(db, current_date):
+        statement = select(Preference).where(Preference.is_submitted == False)
+        drafts = db.exec(statement).all()
+        if drafts:
+            for d in drafts:
+                d.is_submitted = True
+                db.add(d)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
+
 def get_student_week_preferences(
     db: Session,
     student_id: int,
@@ -178,21 +196,10 @@ def get_student_week_preferences(
 ) -> list[Preference]:
     """
     Retrieve all stored preferences for a student for a specific week.
-
-    Args:
-        db:
-            Database session.
-
-        student_id:
-            ID of the student.
-
-        week_start_date:
-            Monday representing the target week.
-
-    Returns:
-        list[Preference]:
-            All stored preferences for the student in that week.
+    Auto-finalizes any draft preferences if the window is closed.
     """
+    current_today = date.today()
+    auto_finalize_draft_preferences(db, current_today)
 
     statement = select(Preference).where(
         Preference.student_id == student_id,
@@ -330,34 +337,21 @@ def submit_weekly_preferences(
     student_id: int,
     preferences,
     current_date: date,
+    is_final: bool = False,
 ) -> list[Preference]:
     """
     Create or update all 14 preferences for a student's upcoming week.
 
-    Students can submit their preferences only on Saturday or Sunday.
-
-    The submission must contain exactly 14 valid meal preferences.
-
-    If a preference has already been overridden by an administrator,
-    the student cannot overwrite that preference.
-
-    The complete operation is committed as one database transaction.
-
-    Returns:
-        list[Preference]:
-            The student's complete set of 14 preferences.
-
-    Raises:
-        ValueError:
-            If the selection window is closed, the submission is invalid,
-            or an administrator has already overridden one of the slots.
+    Students can submit or save draft preferences only on Saturday or Sunday.
+    - is_final=False: Saves selections as draft without locking edits.
+    - is_final=True: Finalizes selections and locks student edits permanently.
     """
 
-    # Check Saturday/Sunday selection window.
+    # Check selection window (respecting admin overrides).
 
-    if not is_selection_open(current_date):
+    if not is_today_window_open(db, current_date):
         raise ValueError(
-            "Student preference selection is available only on Saturday and Sunday"
+            "Preference selection window is currently closed."
         )
 
     # Validate all 14 preference items before changing the database.
@@ -367,14 +361,19 @@ def submit_weekly_preferences(
         current_date=current_date,
     )
 
-    # High-Performance Batch Optimization for 5,000 Concurrent Users:
-    # 1. Fetch all existing preferences for this student and week in 1 single SELECT query.
+    # Fetch all existing preferences for this student and week.
     existing_records = db.exec(
         select(Preference).where(
             Preference.student_id == student_id,
             Preference.week_start_date == week_start,
         )
     ).all()
+
+    # If student has ALREADY finalized submission, reject modifications
+    if any(p.is_submitted for p in existing_records):
+        raise ValueError(
+            "Your weekly preferences have already been finalized and submitted.Edits are locked."
+        )
 
     existing_map: dict[tuple[date, str], Preference] = {
         (p.meal_date, p.meal_type): p for p in existing_records
@@ -396,6 +395,7 @@ def submit_weekly_preferences(
                 )
 
             existing_preference.preference = item.preference
+            existing_preference.is_submitted = is_final
             db.add(existing_preference)
             saved_preferences.append(existing_preference)
 
@@ -407,6 +407,7 @@ def submit_weekly_preferences(
                 meal_date=item.meal_date,
                 meal_type=item.meal_type,
                 preference=item.preference,
+                is_submitted=is_final,
                 updated_by=None,
                 updated_at=None,
             )
@@ -455,12 +456,13 @@ def set_student_preference(
             preference has already been overridden by an administrator.
     """
 
-    # Check selection window.
+    # Check selection window (respecting admin overrides).
 
-    if not is_selection_open(current_date):
+    if not is_today_window_open(db, current_date):
         raise ValueError(
-            "Student preference selection is available only on Saturday and Sunday"
+            "Preference selection window is currently closed."
         )
+
 
     # Validate input.
 
@@ -627,3 +629,116 @@ def admin_update_preference(
     db.refresh(new_preference)
 
     return new_preference
+
+
+# WINDOW OVERRIDE & SINGLE-DAY SUBMISSION SERVICES
+
+from app.models.window import WindowOverride
+
+def get_window_override(db: Session, target_date: date) -> WindowOverride | None:
+    """
+    Retrieve the manual window override status for a specific date.
+    """
+    statement = select(WindowOverride).where(WindowOverride.target_date == target_date)
+    return db.exec(statement).first()
+
+
+def toggle_window_override(db: Session, target_date: date, admin_id: int) -> WindowOverride:
+    """
+    Toggle the open/close status of the preference window for a specific date.
+    Enforces a strict maximum limit of 3 toggles per date across all admins.
+    """
+    override = get_window_override(db, target_date)
+
+    if override is None:
+        override = WindowOverride(
+            target_date=target_date,
+            is_open=False,
+            toggle_count=0,
+            updated_by=admin_id,
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(override)
+
+    if override.toggle_count >= 3:
+        raise ValueError(
+            "Maximum window toggle limit reached for this day (3 toggles maximum allowed)."
+        )
+
+    override.toggle_count += 1
+    override.is_open = not override.is_open
+    override.updated_by = admin_id
+    override.updated_at = datetime.now(timezone.utc)
+
+    db.add(override)
+    db.commit()
+    db.refresh(override)
+
+    return override
+
+
+def is_today_window_open(db: Session, current_date: date) -> bool:
+    """
+    Determine if today's preference window is open, either via standard weekend rule
+    or an explicit administrator override.
+    """
+    override = get_window_override(db, current_date)
+    if override is not None:
+        return override.is_open
+    return is_selection_open(current_date)
+
+
+def submit_today_preferences(
+    db: Session,
+    student_id: int,
+    lunch_pref: str,
+    dinner_pref: str,
+    current_date: date,
+) -> list[Preference]:
+    """
+    Submit or update preferences specifically for today's lunch and dinner
+    when today's window is explicitly open.
+    """
+    if not is_today_window_open(db, current_date):
+        raise ValueError("Preference selection window for today is closed.")
+
+    validate_preference(lunch_pref)
+    validate_preference(dinner_pref)
+
+    week_start = current_date - timedelta(days=current_date.weekday())
+
+    # Check if student already has preference records for today
+    existing_records = db.exec(
+        select(Preference).where(
+            Preference.student_id == student_id,
+            Preference.week_start_date == week_start,
+            Preference.meal_date == current_date,
+        )
+    ).all()
+
+    if existing_records:
+        raise ValueError(
+            "Today's meal preference has already been set and cannot be changed by the student. Only an administrator can override today's choice."
+        )
+
+    meals_to_update = [("lunch", lunch_pref), ("dinner", dinner_pref)]
+    saved_prefs = []
+
+    for meal_type, pref_val in meals_to_update:
+        new_pref = Preference(
+            student_id=student_id,
+            week_start_date=week_start,
+            meal_date=current_date,
+            meal_type=meal_type,
+            preference=pref_val,
+            updated_by=None,
+            updated_at=None,
+        )
+        db.add(new_pref)
+        saved_prefs.append(new_pref)
+
+    db.commit()
+    for p in saved_prefs:
+        db.refresh(p)
+
+    return saved_prefs

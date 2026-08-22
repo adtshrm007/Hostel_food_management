@@ -4,7 +4,7 @@ import adminApi from '../../api/adminApi';
 import authApi from '../../api/authApi';
 import useAuth from '../../hooks/useAuth';
 import StudentTable from '../../components/admin/StudentTable';
-import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert, Shield, Trash2, Eye, EyeOff, UserPlus, Lock, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Users, Building, TrendingDown, ArrowRight, Leaf, Drumstick, Utensils, Calendar, UserCheck, Check, X, ShieldAlert, Shield, Trash2, Eye, EyeOff, UserPlus, Lock, User, AlertCircle, CheckCircle2, Power, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
 import { validatePassword } from '../../utils/validation';
 
 import { toLocalDateStr } from '../../utils/dateHelpers';
@@ -74,6 +74,15 @@ export const Dashboard = () => {
   const [deleteError, setDeleteError] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
+  // Manage Window State
+  const [showWindowModal, setShowWindowModal] = useState(false);
+  const [windowDate, setWindowDate] = useState('');
+  const [windowData, setWindowData] = useState(null);
+  const [windowLoading, setWindowLoading] = useState(false);
+  const [windowActionLoading, setWindowActionLoading] = useState(false);
+  const [windowError, setWindowError] = useState('');
+  const [windowSuccessMsg, setWindowSuccessMsg] = useState('');
+
   // Memoize date calculations to prevent main thread blocking during renders
   const rangeDates = useMemo(() => getDatesFromTodayToNextSunday(), []);
   const [selectedDateStr, setSelectedDateStr] = useState(rangeDates[0]?.dateStr || '');
@@ -81,7 +90,56 @@ export const Dashboard = () => {
   const start_date = rangeDates[0]?.dateStr;
   const end_date = rangeDates[rangeDates.length - 1]?.dateStr;
 
+  const fetchWindowStatus = async (targetDateStr) => {
+    setWindowLoading(true);
+    setWindowError('');
+    setWindowSuccessMsg('');
+    try {
+      const data = await adminApi.getWindowOverride(targetDateStr);
+      setWindowData(data);
+    } catch (err) {
+      console.error('Failed to fetch window status:', err);
+      setWindowError('Failed to load window status for selected date.');
+    } finally {
+      setWindowLoading(false);
+    }
+  };
+
+  const handleOpenWindowModal = () => {
+    const defaultDate = selectedDateStr || rangeDates[0]?.dateStr || toLocalDateStr(new Date());
+    setWindowDate(defaultDate);
+    setWindowError('');
+    setWindowSuccessMsg('');
+    setShowWindowModal(true);
+    fetchWindowStatus(defaultDate);
+  };
+
+  const handleWindowDateChange = (newDate) => {
+    setWindowDate(newDate);
+    fetchWindowStatus(newDate);
+  };
+
+  const handleToggleWindowStatus = async () => {
+    if (!windowDate) return;
+    setWindowActionLoading(true);
+    setWindowError('');
+    setWindowSuccessMsg('');
+    try {
+      const updated = await adminApi.toggleWindowOverride(windowDate);
+      setWindowData(updated);
+      setWindowSuccessMsg(
+        `Successfully ${updated.is_open ? 'OPENED' : 'CLOSED'} preference window for ${updated.target_date}! (${updated.toggles_left} toggles remaining today).`
+      );
+    } catch (err) {
+      console.error('Failed to toggle window:', err);
+      setWindowError(err.response?.data?.detail || 'Failed to toggle window status.');
+    } finally {
+      setWindowActionLoading(false);
+    }
+  };
+
   const fetchDashboardData = useCallback(async () => {
+
     try {
       setLoading(true);
       const [studentData, summaryData, pendingAdminData] = await Promise.all([
@@ -277,6 +335,9 @@ export const Dashboard = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button onClick={handleOpenWindowModal} className="btn" style={{ backgroundColor: 'var(--color-green)', color: 'var(--color-white)', border: 'none' }}>
+            <Power size={18} /> Manage Window
+          </button>
           <button onClick={handleOpenAdminModal} className="btn" style={{ backgroundColor: 'var(--color-navy)', color: 'var(--color-cream)', border: 'none' }}>
             <Shield size={18} /> Manage Admins
           </button>
@@ -286,8 +347,153 @@ export const Dashboard = () => {
         </div>
       </div>
 
+      {/* Manage Selection Window Modal */}
+      {showWindowModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(18, 48, 74, 0.55)', backdropFilter: 'blur(4px)',
+          }}
+          onClick={() => {
+            if (!windowActionLoading) {
+              setShowWindowModal(false);
+            }
+          }}
+        >
+          <div
+            style={{
+              position: 'relative', zIndex: 1, width: '100%', maxWidth: 480,
+              backgroundColor: 'var(--color-white)', borderRadius: '20px',
+              boxShadow: 'var(--shadow-lg)', padding: '2rem 1.75rem',
+              animation: 'fadeIn 0.2s ease',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Power size={22} color="var(--color-green)" />
+                <h3 style={{ margin: 0, color: 'var(--color-navy)', fontSize: '1.2rem' }}>
+                  Manage Selection Window
+                </h3>
+              </div>
+              {!windowActionLoading && (
+                <button onClick={() => setShowWindowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-charcoal-muted)', padding: '4px' }}>
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            {/* Date Select Dropdown */}
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label htmlFor="window-date-select" className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)' }}>
+                Select Target Date
+              </label>
+              <select
+                id="window-date-select"
+                className="form-input"
+                value={windowDate}
+                onChange={(e) => handleWindowDateChange(e.target.value)}
+                disabled={windowLoading || windowActionLoading}
+              >
+                {rangeDates.map((d) => (
+                  <option key={d.dateStr} value={d.dateStr}>
+                    {d.isToday ? 'Today (' + d.formattedDate + ')' : d.dayName + ', ' + d.formattedDate} ({d.dateStr})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Error / Success Notifications */}
+            {windowError && (
+              <div className="alert alert-danger" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+                <AlertCircle size={16} />
+                <span>{windowError}</span>
+              </div>
+            )}
+
+            {windowSuccessMsg && (
+              <div className="alert alert-success" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+                <CheckCircle2 size={16} />
+                <span>{windowSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Window Status Card */}
+            {windowLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>
+                Loading window status...
+              </div>
+            ) : windowData ? (
+              <div style={{
+                backgroundColor: 'var(--color-cream)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1.25rem',
+                marginBottom: '1.5rem',
+                border: '1px solid var(--border-subtle)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-navy)' }}>
+                    Current Window Status:
+                  </span>
+                  <span className={`badge ${windowData.is_open ? 'badge-mint' : 'badge-coral'}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.65rem' }}>
+                    {windowData.is_open ? 'OPEN' : 'CLOSED'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-charcoal-muted)' }}>
+                  <span>Daily Toggle Limit (3 max):</span>
+                  <span style={{ fontWeight: 700, color: windowData.toggles_left > 0 ? 'var(--color-navy)' : 'var(--color-danger)' }}>
+                    {windowData.toggle_count} / 3 used ({windowData.toggles_left} remaining)
+                  </span>
+                </div>
+
+                {windowData.toggles_left === 0 && (
+                  <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <ShieldAlert size={14} /> Maximum limit of 3 toggles reached for this day across all admins.
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* Action Toggle Button */}
+            {windowData && (
+              <button
+                type="button"
+                onClick={handleToggleWindowStatus}
+                disabled={windowLoading || windowActionLoading || windowData.toggles_left === 0}
+                className="btn"
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  backgroundColor: windowData.is_open ? 'var(--color-danger)' : 'var(--color-green)',
+                  color: 'var(--color-white)',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  opacity: windowData.toggles_left === 0 ? 0.6 : 1,
+                  cursor: windowData.toggles_left === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Power size={18} />
+                {windowActionLoading
+                  ? 'Updating Window Status...'
+                  : windowData.is_open
+                  ? 'CLOSE Selection Window for This Day'
+                  : 'OPEN Selection Window for This Day'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Manage Admins Modal */}
       {showAdminModal && (
+
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 9999,
