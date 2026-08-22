@@ -14,7 +14,7 @@ _REGISTRATION_HISTORY: dict[str, list[float]] = defaultdict(list)
 
 # Rate limit configuration
 DEFAULT_MAX_AUTH_REQUESTS = 5  # Max 5 attempts per window to prevent brute-force
-DEFAULT_WINDOW_SECONDS = 60    # 1 minute window
+DEFAULT_WINDOW_SECONDS = 300   # 5 minute window
 
 
 def get_client_ip(request: Request) -> str:
@@ -65,7 +65,7 @@ def rate_limit_auth_requests(
     if len(history) >= max_requests:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many authentication attempts. Please wait 60 seconds before trying again.",
+            detail="Too many authentication attempts. Please wait 5 minutes before trying again.",
             headers={"Retry-After": str(window_seconds)},
         )
 
@@ -74,7 +74,7 @@ def rate_limit_auth_requests(
 
 def rate_limit_registration_requests(
     request: Request,
-    max_requests: int = 10,
+    max_requests: int = 2,
     window_seconds: int = 86400,
 ):
     """
@@ -92,7 +92,7 @@ def rate_limit_registration_requests(
     if len(history) >= max_requests:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="You have exhausted the registration limit for today from this device (maximum 10 requests per 24 hours).",
+            detail="You have exhausted the registration limit for today from this device (maximum 2 requests per 24 hours).",
             headers={"Retry-After": str(window_seconds)},
         )
 
