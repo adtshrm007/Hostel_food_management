@@ -1,13 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Key, ArrowRight, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Key, ArrowRight, AlertCircle, ArrowLeft, Eye, EyeOff, Clock } from 'lucide-react';
+
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes cooldown
 
 export const EnterKey = () => {
   const [keyInput, setKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [lockUntil, setLockUntil] = useState(() => {
+    const storedLock = sessionStorage.getItem('admin_key_lock_until');
+    if (!storedLock) return null;
+    const lockTime = parseInt(storedLock, 10);
+    if (Date.now() >= lockTime) {
+      sessionStorage.removeItem('admin_key_lock_until');
+      sessionStorage.removeItem('admin_key_attempts_left');
+      return null;
+    }
+    return lockTime;
+  });
+  const [remainingLockSeconds, setRemainingLockSeconds] = useState(0);
+
+  const [attemptsLeft, setAttemptsLeft] = useState(() => {
+    const storedLock = sessionStorage.getItem('admin_key_lock_until');
+    if (storedLock && Date.now() < parseInt(storedLock, 10)) {
+      return 0;
+    }
+    const stored = sessionStorage.getItem('admin_key_attempts_left');
+    return stored !== null ? parseInt(stored, 10) : MAX_ATTEMPTS;
+  });
+
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  // Cooldown countdown timer effect
+  useEffect(() => {
+    if (!lockUntil) {
+      setRemainingLockSeconds(0);
+      return;
+    }
+
+    const updateTimer = () => {
+      const diff = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
+      setRemainingLockSeconds(diff);
+
+      if (diff <= 0) {
+        // Cooldown finished: automatically reset back to 5 attempts
+        sessionStorage.removeItem('admin_key_lock_until');
+        sessionStorage.removeItem('admin_key_attempts_left');
+        setLockUntil(null);
+        setAttemptsLeft(MAX_ATTEMPTS);
+        setError('');
+      }
+    };
+
+    updateTimer();
+    const timerId = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerId);
+  }, [lockUntil]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   // SHA-256 function using standard browser crypto subtle API
   const sha256 = async (message) => {
@@ -21,6 +78,17 @@ export const EnterKey = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (lockUntil && Date.now() < lockUntil) {
+      setError(`Too many failed attempts. Security gate is locked for another ${formatTime(remainingLockSeconds)}.`);
+      return;
+    }
+
+    if (attemptsLeft <= 0) {
+      setError('Too many failed attempts. Access to the security gate is locked.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -29,10 +97,23 @@ export const EnterKey = () => {
       const targetHash = 'a11cddf53d0585e749c4c7af556f2eba0ebd9034ee707aac347dc674c7ebd2e4';
 
       if (hashedVal === targetHash) {
+        sessionStorage.removeItem('admin_key_attempts_left');
+        sessionStorage.removeItem('admin_key_lock_until');
         sessionStorage.setItem('admin_portal_unlocked', 'true');
         navigate('/login?role=admin');
       } else {
-        setError('Incorrect PIN. Access denied.');
+        const nextAttempts = attemptsLeft - 1;
+        setAttemptsLeft(nextAttempts);
+        sessionStorage.setItem('admin_key_attempts_left', nextAttempts.toString());
+
+        if (nextAttempts > 0) {
+          setError(`Incorrect PIN. You have ${nextAttempts} attempt${nextAttempts === 1 ? '' : 's'} left to enter the key.`);
+        } else {
+          const expiryTime = Date.now() + LOCKOUT_DURATION_MS;
+          sessionStorage.setItem('admin_key_lock_until', expiryTime.toString());
+          setLockUntil(expiryTime);
+          setError('Too many failed attempts. Security gate is locked for 5 minutes.');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -80,6 +161,32 @@ export const EnterKey = () => {
           <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.92rem', lineHeight: 1.4 }}>
             Please enter the system key to authorize access to the Administrator Portal.
           </p>
+          <div style={{ marginTop: '0.75rem' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.35rem 0.85rem',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                borderRadius: 'var(--radius-pill)',
+                backgroundColor: lockUntil || attemptsLeft <= 1 ? 'rgba(229, 57, 53, 0.12)' : attemptsLeft <= 3 ? 'rgba(255, 111, 97, 0.12)' : 'var(--color-cream)',
+                color: lockUntil || attemptsLeft <= 1 ? 'var(--color-danger)' : attemptsLeft <= 3 ? 'var(--color-coral)' : 'var(--color-navy)',
+                border: '1px solid currentColor',
+              }}
+            >
+              {lockUntil ? (
+                <>
+                  <Clock size={14} /> Lockout expires in {formatTime(remainingLockSeconds)}
+                </>
+              ) : attemptsLeft > 0 ? (
+                `You have ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left to enter the key`
+              ) : (
+                '0 attempts left — Gate Locked'
+              )}
+            </span>
+          </div>
         </div>
 
         {/* Error Banner */}
@@ -102,15 +209,17 @@ export const EnterKey = () => {
                 name="securityKey"
                 type={showKey ? 'text' : 'password'}
                 className="form-input"
-                placeholder="Enter system security key"
+                placeholder={lockUntil ? `Locked — try again in ${formatTime(remainingLockSeconds)}` : attemptsLeft <= 0 ? 'Access locked' : 'Enter system security key'}
                 value={keyInput}
                 onChange={(e) => setKeyInput(e.target.value)}
                 required
+                disabled={attemptsLeft <= 0 || isSubmitting || !!lockUntil}
                 style={{ paddingRight: '2.75rem' }}
               />
               <button
                 type="button"
                 onClick={() => setShowKey((v) => !v)}
+                disabled={attemptsLeft <= 0 || !!lockUntil}
                 aria-label={showKey ? 'Hide key' : 'Show key'}
                 style={{
                   position: 'absolute',
@@ -119,7 +228,7 @@ export const EnterKey = () => {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: (attemptsLeft <= 0 || lockUntil) ? 'not-allowed' : 'pointer',
                   color: 'var(--color-charcoal-muted)',
                   padding: 0,
                   display: 'flex',
@@ -134,11 +243,11 @@ export const EnterKey = () => {
           <button
             type="submit"
             id="security-key-submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || attemptsLeft <= 0 || !!lockUntil}
             className="btn btn-primary"
             style={{ width: '100%', padding: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
           >
-            {isSubmitting ? 'Verifying...' : 'Unlock Portal'}
+            {isSubmitting ? 'Verifying...' : lockUntil ? `Locked (${formatTime(remainingLockSeconds)})` : attemptsLeft <= 0 ? 'Access Locked' : 'Unlock Portal'}
             <ArrowRight size={18} />
           </button>
         </form>
