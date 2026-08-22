@@ -87,3 +87,11 @@ class TokenResponse(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
+
+
+class LoginResponse(BaseModel):
+    """
+    Response returned after successful login, avoiding exposing the token in the response body.
+    """
+
+    message: str = "Logged in successfully"

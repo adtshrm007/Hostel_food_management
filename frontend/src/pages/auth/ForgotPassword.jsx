@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authApi from '../../api/authApi';
 import { extractErrorMessage } from '../../utils/errorHelpers';
-import { Mail, Lock, KeyRound, ArrowRight, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, KeyRound, ArrowRight, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff, Hash } from 'lucide-react';
 import { validatePassword, validateEmail } from '../../utils/validation';
 
 export const ForgotPassword = () => {

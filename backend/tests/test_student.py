@@ -63,7 +63,7 @@ def test_get_student_profile(client: TestClient):
             "password": "Password123!",
         },
     )
-    token = login_response.json()["access_token"]
+    token = login_response.cookies.get("access_token")
 
     # 3. Access profile endpoint
     profile_response = client.get(

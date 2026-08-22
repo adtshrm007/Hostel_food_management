@@ -5,6 +5,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session
+from app.models.student import Student
+from app.models.admin import Admin
+from app.core.dependencies import get_current_user
 
 from app.config import settings
 from app.core.rate_limiter import rate_limit_auth_requests, rate_limit_registration_requests
@@ -14,6 +17,7 @@ from app.schemas.auth import (
     StudentLoginRequest,
     StudentForgotPasswordRequest,
     TokenResponse,
+    LoginResponse,
 )
 from app.schemas.student import StudentCreate, StudentResponse
 from app.schemas.admin import AdminCreate, AdminResponse
@@ -85,7 +89,7 @@ def student_forgot_password(
 
 @router.post(
     "/student/login",
-    response_model=TokenResponse,
+    response_model=LoginResponse,
     dependencies=[Depends(rate_limit_auth_requests)],
 )
 def student_login(
@@ -117,8 +121,8 @@ def student_login(
         max_age=86400,
     )
 
-    return TokenResponse(
-        access_token=token,
+    return LoginResponse(
+        message="Logged in successfully",
     )
 
 
@@ -151,7 +155,7 @@ def admin_register(
 
 @router.post(
     "/admin/login",
-    response_model=TokenResponse,
+    response_model=LoginResponse,
     dependencies=[Depends(rate_limit_auth_requests)],
 )
 def admin_login(
@@ -176,8 +180,8 @@ def admin_login(
             secure=settings.is_cookie_secure,
             max_age=86400,
         )
-        return TokenResponse(
-            access_token=token,
+        return LoginResponse(
+            message="Logged in successfully",
         )
     except ValueError as exc:
         msg = str(exc)
@@ -202,3 +206,19 @@ def logout(response: Response):
     """
     response.delete_cookie("access_token")
     return {"message": "Logged out successfully"}
+
+
+@router.get("/me")
+def get_me(user = Depends(get_current_user)):
+    """
+    Get the currently authenticated user's profile and role.
+    """
+    if isinstance(user, Student):
+        return {"role": "student", "user": user}
+    elif isinstance(user, Admin):
+        return {"role": "admin", "user": user}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )

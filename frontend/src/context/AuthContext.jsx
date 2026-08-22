@@ -7,50 +7,39 @@ export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(localStorage.getItem('role') || null);
+  const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (userRole) => {
+  const fetchUserData = async () => {
     try {
       setLoading(true);
-      if (userRole === 'student') {
-        const studentProfile = await studentApi.getProfile();
-        setUser({ ...studentProfile, role: 'student' });
-      } else if (userRole === 'admin') {
-        const adminProfile = await adminApi.getMe();
-        setUser({ ...adminProfile, role: 'admin' });
-      }
+      const data = await authApi.getMe();
+      setRole(data.role);
+      setUser({ ...data.user, role: data.role });
     } catch (err) {
-      console.error('Failed to fetch current user profile:', err);
-      await logout();
+      if (err.response?.status !== 401) {
+        console.error('Failed to fetch current user profile:', err);
+      }
+      setRole(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (role) {
-      fetchUserData(role);
-    } else {
-      setLoading(false);
-    }
-  }, [role]);
+    fetchUserData();
+  }, []);
 
   const loginStudent = async (email, password) => {
     const data = await authApi.loginStudent({ email, password });
-    localStorage.removeItem('token');
-    localStorage.setItem('role', 'student');
-    setRole('student');
-    await fetchUserData('student');
+    await fetchUserData();
     return data;
   };
 
   const loginAdmin = async (username, password) => {
     const data = await authApi.loginAdmin({ username, password });
-    localStorage.removeItem('token');
-    localStorage.setItem('role', 'admin');
-    setRole('admin');
-    await fetchUserData('admin');
+    await fetchUserData();
     return data;
   };
 
@@ -60,8 +49,6 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Logout error:', err);
     }
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
     setRole(null);
     setUser(null);
   };

@@ -8,14 +8,15 @@ const axiosInstance = axios.create({
   },
 });
 
-// Response interceptor: on 401, clear cached session state and redirect to login
+// Response interceptor: on 401, redirect to login if attempting to access protected pages
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('role');
       const path = window.location.pathname;
-      if (!path.includes('/login') && !path.includes('/register') && path !== '/') {
+      const publicPaths = ['/', '/login', '/register', '/forgot-password'];
+      const isPublic = publicPaths.some((p) => path === p || (p !== '/' && path.startsWith(p)));
+      if (!isPublic) {
         window.location.href = '/login';
       }
     }

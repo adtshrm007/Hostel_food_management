@@ -78,8 +78,8 @@ def test_student_register_and_login(client: TestClient):
     )
     assert login_response.status_code == 200
     token_data = login_response.json()
-    assert "access_token" in token_data
-    assert token_data["token_type"] == "bearer"
+    assert "message" in token_data
+    assert login_response.cookies.get("access_token") is not None
 
 
 def test_student_register_password_regex_validation(client: TestClient):

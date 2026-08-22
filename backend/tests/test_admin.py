@@ -54,7 +54,7 @@ def test_admin_login_and_list_students(client: TestClient):
         json={"username": "admin", "password": "admin123"},
     )
     assert login_response.status_code == 200
-    token = login_response.json()["access_token"]
+    token = login_response.cookies.get("access_token")
 
     # 2. Get students list as admin
     list_response = client.get(
@@ -86,7 +86,7 @@ def test_admin_update_student(client: TestClient, session: Session):
         "/auth/admin/login",
         json={"username": "admin", "password": "admin123"},
     )
-    token = login_response.json()["access_token"]
+    token = login_response.cookies.get("access_token")
 
     # 3. Update student details
     update_response = client.put(
@@ -149,7 +149,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
         "/auth/admin/login",
         json={"username": "admin", "password": "admin123"},
     )
-    token = login_response.json()["access_token"]
+    token = login_response.cookies.get("access_token")
 
     # 3. Try delete with WRONG password
     wrong_pass_resp = client.post(
@@ -207,7 +207,7 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
         "/auth/admin/login",
         json={"username": "admin", "password": "admin123"},
     )
-    token = login_response.json()["access_token"]
+    token = login_response.cookies.get("access_token")
 
     # 3. Bulk delete with password verification
     bulk_response = client.post(
