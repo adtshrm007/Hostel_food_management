@@ -12,6 +12,12 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // If the server is unreachable (Network Error) or returns a 5xx status code (crash), redirect to Vercel
+    if (!error.response || (error.response.status >= 500 && error.response.status < 600)) {
+      window.location.href = 'https://gita-bhojanalaya.vercel.app/';
+      return Promise.reject(error);
+    }
+
     if (error.response && error.response.status === 401) {
       const path = window.location.pathname;
       const publicPaths = ['/', '/login', '/register', '/forgot-password', '/enter-key'];
