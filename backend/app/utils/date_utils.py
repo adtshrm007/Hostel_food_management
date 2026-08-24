@@ -82,6 +82,24 @@ def is_selection_open(current_date: date | None = None) -> bool:
     return current_date.weekday() in (5, 6)
 
 
+def get_current_week_start(current_date: date | None = None) -> date:
+    """
+    Calculate the Monday of the current calendar week.
+    """
+    if current_date is None:
+        current_date = get_current_local_date()
+    return current_date - timedelta(days=current_date.weekday())
+
+
+def get_current_week_end(current_date: date | None = None) -> date:
+    """
+    Calculate the Sunday of the current calendar week.
+    """
+    if current_date is None:
+        current_date = get_current_local_date()
+    return get_current_week_start(current_date) + timedelta(days=6)
+
+
 def get_upcoming_week_start(current_date: date | None = None) -> date:
     """
     Calculate the Monday of the upcoming week for selection (next Monday).
@@ -91,8 +109,8 @@ def get_upcoming_week_start(current_date: date | None = None) -> date:
     if current_date is None:
         current_date = get_current_local_date()
 
-    days_until_monday = 7 - current_date.weekday()
-    return current_date + timedelta(days=days_until_monday)
+    curr_monday = get_current_week_start(current_date)
+    return curr_monday + timedelta(days=7)
 
 
 def get_target_week_start(current_date: date | None = None) -> date:

@@ -47,6 +47,7 @@ from sqlmodel import Session, select
 from app.models.preference import Preference
 from app.utils.date_utils import (
     is_selection_open,
+    get_current_week_start,
     get_upcoming_week_start,
     get_upcoming_week_end,
 )
@@ -242,7 +243,8 @@ def validate_weekly_submission(
     current_date: date,
 ) -> date:
     """
-    Validate a complete weekly preference submission.
+    Validate a complete weekly preference submission for either the current
+    calendar week or the upcoming calendar week.
 
     A valid submission must contain exactly:
 
@@ -251,17 +253,18 @@ def validate_weekly_submission(
     The following conditions are enforced:
 
     1. Exactly 14 preference items must be provided.
-    2. Every meal date must belong to the upcoming week.
-    3. Every meal type must be lunch or dinner.
-    4. Every preference must be veg or non_veg.
-    5. No date/meal combination may appear more than once.
-    6. Every day from Monday through Sunday must contain:
+    2. Every meal date must belong to either the current week or the upcoming week.
+    3. All 14 meal dates must belong to the same 7-day Monday-Sunday week.
+    4. Every meal type must be lunch or dinner.
+    5. Every preference must be veg or non_veg.
+    6. No date/meal combination may appear more than once.
+    7. Every day from Monday through Sunday must contain:
            - one lunch preference
            - one dinner preference
 
     Returns:
         date:
-            Monday of the upcoming week.
+            Monday of the target week.
 
     Raises:
         ValueError:
@@ -273,8 +276,19 @@ def validate_weekly_submission(
             "A complete weekly submission must contain exactly 14 preferences"
         )
 
-    week_start = get_upcoming_week_start(current_date)
-    week_end = get_upcoming_week_end(current_date)
+    # Determine the target week start based on the first item
+    first_meal_date = preferences[0].meal_date
+    week_start = first_meal_date - timedelta(days=first_meal_date.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    # Allowed weeks are current calendar week and upcoming calendar week
+    curr_week_start = get_current_week_start(current_date)
+    up_week_start = get_upcoming_week_start(current_date)
+
+    if week_start not in (curr_week_start, up_week_start):
+        raise ValueError(
+            "Meal dates must belong to either the current week or the upcoming week"
+        )
 
     seen_slots: set[tuple[date, str]] = set()
 
@@ -290,10 +304,10 @@ def validate_weekly_submission(
         # Validate food preference.
         validate_preference(preference)
 
-        # Validate date.
+        # Validate date belongs to the designated 7-day week.
         if not week_start <= meal_date <= week_end:
             raise ValueError(
-                f"Meal date {meal_date} must belong to the upcoming week"
+                f"Meal date {meal_date} does not belong to the selected week ({week_start} to {week_end})"
             )
 
         # Detect duplicate date + meal combinations.

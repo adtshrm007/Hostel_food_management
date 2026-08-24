@@ -6,8 +6,9 @@ export const studentApi = {
     return response.data;
   },
 
-  getWeeklyPreferences: async () => {
-    const response = await axiosInstance.get('/preference/weekly');
+  getWeeklyPreferences: async (weekStart = null) => {
+    const params = weekStart ? { week_start: weekStart } : {};
+    const response = await axiosInstance.get('/preference/weekly', { params });
     return response.data;
   },
 

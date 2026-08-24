@@ -135,16 +135,18 @@ def submit_weekly_preference(
     response_model=list[PreferenceResponse],
 )
 def get_my_weekly_preferences(
+    week_start: date | None = None,
     current_student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve the authenticated student's preferences for the active/upcoming week.
+    Retrieve the authenticated student's preferences for the active/upcoming week or specified week_start.
     """
 
-    week_start = get_target_week_start(
-        get_current_local_date()
-    )
+    if week_start is None:
+        week_start = get_target_week_start(
+            get_current_local_date()
+        )
 
     return get_student_week_preferences(
         db=db,
