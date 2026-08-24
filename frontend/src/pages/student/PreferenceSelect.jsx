@@ -57,7 +57,7 @@ export const PreferenceSelect = () => {
 
 
   const handleSelectChoice = (dateStr, mealType, choice) => {
-    if (isFinalized || !windowOpen) return;
+    if (!windowOpen || (isFinalized && !windowOpen)) return;
     const key = `${dateStr}_${mealType}`;
     setSelections((prev) => ({
       ...prev,
@@ -137,8 +137,8 @@ export const PreferenceSelect = () => {
       <div className="page-header-banner">
         <div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-            <span className={`badge ${windowOpen ? (isFinalized ? 'badge-coral' : 'badge-mint') : 'badge-coral'}`}>
-              <Calendar size={14} /> {isFinalized ? 'Finalized & Locked' : (windowOpen ? 'Selection Window Open' : 'Window Closed')}
+            <span className={`badge ${windowOpen ? 'badge-mint' : 'badge-coral'}`}>
+              <Calendar size={14} /> {windowOpen ? (isFinalized ? 'Window Re-opened — Edit Allowed' : 'Selection Window Open') : (isFinalized ? 'Finalized & Locked' : 'Window Closed')}
             </span>
             <span className="badge badge-navy">
               Upcoming Week ({weekDays[0].formattedDate} – {weekDays[6].formattedDate})
@@ -193,7 +193,7 @@ export const PreferenceSelect = () => {
         </div>
       )}
 
-      {isFinalized && (
+      {isFinalized && !windowOpen && (
         <div className="alert alert-info" style={{ marginBottom: '1.5rem' }}>
           <Lock size={20} />
           <span>
@@ -247,7 +247,7 @@ export const PreferenceSelect = () => {
                   selectedChoice={selections[lunchKey]}
                   onSelect={(choice) => handleSelectChoice(day.dateStr, 'lunch', choice)}
                   isAdminOverridden={!!lunchExisting?.updated_by}
-                  disabled={isFinalized || !windowOpen}
+                  disabled={!windowOpen}
                 />
 
                 <PreferenceCard
@@ -259,7 +259,7 @@ export const PreferenceSelect = () => {
                   selectedChoice={selections[dinnerKey]}
                   onSelect={(choice) => handleSelectChoice(day.dateStr, 'dinner', choice)}
                   isAdminOverridden={!!dinnerExisting?.updated_by}
-                  disabled={isFinalized || !windowOpen}
+                  disabled={!windowOpen}
                 />
               </div>
             </div>
@@ -268,7 +268,7 @@ export const PreferenceSelect = () => {
       </div>
 
       {/* Submit Action Bar */}
-      {!isFinalized && windowOpen && (
+      {windowOpen && (
         <div className="sticky-submit-bar">
           <div>
             <div style={{ fontWeight: 800, color: 'var(--color-navy)', fontSize: '1.1rem' }}>

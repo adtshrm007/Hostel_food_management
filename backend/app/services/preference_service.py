@@ -370,10 +370,18 @@ def submit_weekly_preferences(
     ).all()
 
     # If student has ALREADY finalized submission, reject modifications
+    # UNLESS the admin has explicitly re-opened the window — then allow resubmission.
     if any(p.is_submitted for p in existing_records):
-        raise ValueError(
-            "Your weekly preferences have already been finalized and submitted.Edits are locked."
-        )
+        override = get_window_override(db, current_date)
+        admin_opened = override is not None and override.is_open
+        if not admin_opened:
+            raise ValueError(
+                "Your weekly preferences have already been finalized and submitted.Edits are locked."
+            )
+        # Admin re-opened the window: reset finalization so the student can edit.
+        for p in existing_records:
+            p.is_submitted = False
+            db.add(p)
 
     existing_map: dict[tuple[date, str], Preference] = {
         (p.meal_date, p.meal_type): p for p in existing_records
@@ -717,9 +725,39 @@ def submit_today_preferences(
     ).all()
 
     if existing_records:
-        raise ValueError(
-            "Today's meal preference has already been set and cannot be changed by the student. Only an administrator can override today's choice."
-        )
+        # If admin has explicitly re-opened the window, allow the student to update.
+        override = get_window_override(db, current_date)
+        admin_opened = override is not None and override.is_open
+        if not admin_opened:
+            raise ValueError(
+                "Today's meal preference has already been set and cannot be changed by the student. Only an administrator can override today's choice."
+            )
+        # Admin re-opened: update existing records instead of rejecting.
+        existing_map = {p.meal_type.lower(): p for p in existing_records}
+        saved_prefs = []
+        for meal_type, pref_val in [("lunch", lunch_pref), ("dinner", dinner_pref)]:
+            if meal_type in existing_map:
+                existing_map[meal_type].preference = pref_val
+                existing_map[meal_type].updated_by = None
+                existing_map[meal_type].updated_at = None
+                db.add(existing_map[meal_type])
+                saved_prefs.append(existing_map[meal_type])
+            else:
+                new_pref = Preference(
+                    student_id=student_id,
+                    week_start_date=week_start,
+                    meal_date=current_date,
+                    meal_type=meal_type,
+                    preference=pref_val,
+                    updated_by=None,
+                    updated_at=None,
+                )
+                db.add(new_pref)
+                saved_prefs.append(new_pref)
+        db.commit()
+        for p in saved_prefs:
+            db.refresh(p)
+        return saved_prefs
 
     meals_to_update = [("lunch", lunch_pref), ("dinner", dinner_pref)]
     saved_prefs = []
