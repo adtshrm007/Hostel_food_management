@@ -53,6 +53,24 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  /**
+   * Refresh the current user's profile from the server.
+   * Use this after profile or avatar updates to keep context in sync.
+   */
+  const refreshUser = async () => {
+    try {
+      if (role === 'student') {
+        const profileData = await studentApi.getProfile();
+        setUser({ ...profileData, role: 'student' });
+      } else if (role === 'admin') {
+        const adminData = await adminApi.getMe();
+        setUser({ ...adminData, role: 'admin' });
+      }
+    } catch (err) {
+      console.error('Failed to refresh user data:', err);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -62,6 +80,7 @@ export const AuthProvider = ({ children }) => {
         loginStudent,
         loginAdmin,
         logout,
+        refreshUser,
         isAuthenticated: !!role,
       }}
     >

@@ -60,13 +60,18 @@ from app.services.preference_service import (
 from app.services.student_service import (
     get_all_students,
     get_student_by_id,
+    get_student_by_roll_number,
     get_student_by_registration_number,
     search_students,
     update_student,
+    admin_update_student,
+    update_student_avatar,
+    delete_student_avatar,
     delete_student,
     delete_students_bulk,
     bulk_import_students_service,
 )
+from app.services.cloudinary_service import upload_profile_picture
 from app.utils.date_utils import get_upcoming_week_start, get_current_local_date
 
 
@@ -124,7 +129,9 @@ MAX_DB_INT = 2147483647
 
 def _resolve_student(db: Session, identifier: str) -> Student | None:
     s_str = str(identifier).strip()
-    student = get_student_by_registration_number(db=db, registration_number=s_str)
+    student = get_student_by_roll_number(db=db, roll_number=s_str)
+    if student is None:
+        student = get_student_by_registration_number(db=db, registration_number=s_str)
     if student is None and s_str.isdigit():
         try:
             val = int(s_str)
@@ -654,6 +661,9 @@ def bulk_delete_student_records(
         )
 
     ids_to_delete = []
+    if request.roll_numbers:
+        found_students = db.exec(select(Student).where(Student.roll_number.in_(request.roll_numbers))).all()
+        ids_to_delete.extend([s.student_id for s in found_students])
     if request.registration_numbers:
         found_students = db.exec(select(Student).where(Student.registration_number.in_(request.registration_numbers))).all()
         ids_to_delete.extend([s.student_id for s in found_students])
@@ -665,6 +675,79 @@ def bulk_delete_student_records(
     return {
         "message": f"Successfully deleted {deleted_count} student record(s) and their associated preference data."
     }
+
+
+@router.post(
+    "/students/{student_id}/avatar",
+    response_model=StudentResponse,
+)
+async def admin_upload_student_avatar(
+    student_id: str,
+    file: UploadFile = File(...),
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Administrator endpoint to upload or replace a student's profile photo (unlimited replacements).
+    """
+    student = _resolve_student(db=db, identifier=student_id)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    try:
+        file_bytes = await file.read()
+        upload_result = upload_profile_picture(
+            file_bytes=file_bytes,
+            student_id=student.student_id,
+        )
+        updated_student = update_student_avatar(
+            db=db,
+            student_id=student.student_id,
+            upload_result=upload_result,
+            is_admin=True,
+        )
+        return updated_student
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+@router.delete(
+    "/students/{student_id}/avatar",
+    response_model=StudentResponse,
+)
+def admin_remove_student_avatar(
+    student_id: str,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Administrator endpoint to remove a student's profile photo.
+    """
+    student = _resolve_student(db=db, identifier=student_id)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    try:
+        updated_student = delete_student_avatar(
+            db=db,
+            student_id=student.student_id,
+            is_admin=True,
+        )
+        return updated_student
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
 
 
 import csv

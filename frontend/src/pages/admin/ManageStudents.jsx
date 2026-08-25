@@ -109,16 +109,21 @@ const ConfirmModal = ({ open, title, message, confirmLabel, confirmDanger, onCon
 
 // ─── Edit Student Modal ─────────────────────────────────────────────
 const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) => {
-  const [form, setForm] = useState({ name: '', registration_number: '', phone: '', hostel: '', email: '' });
+  const [form, setForm] = useState({
+    name: '', roll_number: '', phone: '', hostel: '', email: '',
+    registration_number: '', room_number: '',
+  });
 
   useEffect(() => {
     if (student) {
       setForm({
         name: student.name || '',
-        registration_number: student.registration_number || '',
+        roll_number: student.roll_number || '',
         phone: student.phone || '',
         hostel: student.hostel || '',
         email: student.email || '',
+        registration_number: student.registration_number || '',
+        room_number: student.room_number || '',
       });
     }
   }, [student]);
@@ -131,18 +136,20 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Only send changed fields
+    // Only send changed fields to admin override endpoint
     const updates = {};
     if (form.name !== student.name) updates.name = form.name;
-    if (form.registration_number !== student.registration_number) updates.registration_number = form.registration_number;
+    if (form.roll_number !== student.roll_number) updates.roll_number = form.roll_number;
     if (form.phone !== student.phone) updates.phone = form.phone;
     if (form.hostel !== student.hostel) updates.hostel = form.hostel;
     if (form.email !== student.email) updates.email = form.email;
+    if (form.registration_number !== (student.registration_number || '')) updates.registration_number = form.registration_number || null;
+    if (form.room_number !== (student.room_number || '')) updates.room_number = form.room_number || null;
     if (Object.keys(updates).length === 0) {
       onClose();
       return;
     }
-    onSave(student.registration_number, updates);
+    onSave(student.roll_number, updates);
   };
 
   const inputStyle = {
@@ -188,8 +195,8 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
               <input id="edit-student-name" name="name" value={form.name} onChange={handleChange} style={inputStyle} required minLength={2} maxLength={100} />
             </div>
             <div>
-              <label htmlFor="edit-student-registration_number" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)', marginBottom: '0.3rem', display: 'block' }}>registration_number Number</label>
-              <input id="edit-student-registration_number" name="registration_number" value={form.registration_number} onChange={handleChange} style={inputStyle} required minLength={2} maxLength={30} />
+              <label htmlFor="edit-student-roll_number" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)', marginBottom: '0.3rem', display: 'block' }}>Roll Number</label>
+              <input id="edit-student-roll_number" name="roll_number" value={form.roll_number} onChange={handleChange} style={inputStyle} required minLength={2} maxLength={50} />
             </div>
           </div>
 
@@ -208,9 +215,20 @@ const EditStudentModal = ({ open, student, onSave, onClose, loading, error }) =>
             </div>
           </div>
 
-          <div style={{ marginBottom: '1.25rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="edit-student-email" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)', marginBottom: '0.3rem', display: 'block' }}>Email</label>
             <input id="edit-student-email" name="email" type="email" value={form.email} onChange={handleChange} style={inputStyle} required />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div>
+              <label htmlFor="edit-student-registration_number" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-charcoal-muted)', marginBottom: '0.3rem', display: 'block' }}>Registration No. (optional)</label>
+              <input id="edit-student-registration_number" name="registration_number" value={form.registration_number} onChange={handleChange} style={{ ...inputStyle, borderStyle: 'dashed' }} maxLength={50} placeholder="e.g. REG2021001" />
+            </div>
+            <div>
+              <label htmlFor="edit-student-room_number" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-charcoal-muted)', marginBottom: '0.3rem', display: 'block' }}>Room No. (optional)</label>
+              <input id="edit-student-room_number" name="room_number" value={form.room_number} onChange={handleChange} style={{ ...inputStyle, borderStyle: 'dashed' }} maxLength={20} placeholder="e.g. A-101" />
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -285,9 +303,9 @@ const ImportStudentModal = ({ open, onClose, onSuccess }) => {
   };
 
   const handleDownloadSampleCSV = () => {
-    const csvContent = 'name,registration_number,phone,hostel,email,password\n' +
-      'Rahul Sharma,2401001,+919876543210,Gita Bhawan Block A,rahul.sharma@example.com,Rahul@123\n' +
-      'Ananya Verma,2401002,+919876543211,Gita Bhawan Block B,ananya.verma@example.com,Ananya@123\n';
+    const csvContent = 'name,roll_number,phone,hostel,email,password,registration_number,room_number\n' +
+      'Rahul Sharma,21CS001,+919876543210,Gita Bhawan Block A,rahul.sharma@example.com,Rahul@123,REG2021001,A-101\n' +
+      'Ananya Verma,21CS002,+919876543211,Gita Bhawan Block B,ananya.verma@example.com,Ananya@123,,\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -607,13 +625,13 @@ export const ManageStudents = () => {
   };
 
   // ─── Selection Handlers ────────────────────────────────────────
-  const toggleSelect = (registration_number) => {
+  const toggleSelect = (roll_number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(registration_number)) {
-        next.delete(registration_number);
+      if (next.has(roll_number)) {
+        next.delete(roll_number);
       } else {
-        next.add(registration_number);
+        next.add(roll_number);
       }
       return next;
     });
@@ -623,7 +641,7 @@ export const ManageStudents = () => {
     if (selectedIds.size === students.length && students.length > 0) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(students.map((s) => s.registration_number)));
+      setSelectedIds(new Set(students.map((s) => s.roll_number)));
     }
   };
 
@@ -642,19 +660,19 @@ export const ManageStudents = () => {
     setConfirmModal({
       open: true,
       title: 'Delete Student Permanently',
-      message: `Are you sure you want to permanently delete "${student.name}" (${student.registration_number})? All associated food preferences will also be deleted. This action cannot be undone.`,
+      message: `Are you sure you want to permanently delete "${student.name}" (Roll: ${student.roll_number})? All associated food preferences will also be deleted. This action cannot be undone.`,
       confirmLabel: 'Verify & Delete Permanently',
       confirmDanger: true,
       requirePassword: true,
       onConfirm: async (adminPassword) => {
         try {
           setActionLoading(true);
-          await adminApi.deleteStudent(student.registration_number, adminPassword);
+          await adminApi.deleteStudent(student.roll_number, adminPassword);
           showToast(`Student "${student.name}" deleted successfully.`);
-          setStudents((prev) => prev.filter((s) => s.registration_number !== student.registration_number));
+          setStudents((prev) => prev.filter((s) => s.roll_number !== student.roll_number));
           setSelectedIds((prev) => {
             const next = new Set(prev);
-            next.delete(student.registration_number);
+            next.delete(student.roll_number);
             return next;
           });
         } catch (err) {
@@ -683,7 +701,7 @@ export const ManageStudents = () => {
           setActionLoading(true);
           await adminApi.deleteStudentsBulk(Array.from(selectedIds), adminPassword);
           showToast(`Successfully deleted ${count} student${count > 1 ? 's' : ''}.`);
-          setStudents((prev) => prev.filter((s) => !selectedIds.has(s.registration_number)));
+          setStudents((prev) => prev.filter((s) => !selectedIds.has(s.roll_number)));
           setSelectedIds(new Set());
         } catch (err) {
           showToast(err?.response?.data?.detail || 'Failed to delete students.', 'error');
@@ -701,12 +719,12 @@ export const ManageStudents = () => {
     setEditModal({ open: true, student });
   };
 
-  const handleEditSave = async (registration_numberOrId, updates) => {
+  const handleEditSave = async (rollNumberOrId, updates) => {
     try {
       setActionLoading(true);
       setEditError('');
-      const updated = await adminApi.updateStudent(registration_numberOrId, updates);
-      setStudents((prev) => prev.map((s) => (s.registration_number === registration_numberOrId ? { ...s, ...updated } : s)));
+      const updated = await adminApi.updateStudent(rollNumberOrId, updates);
+      setStudents((prev) => prev.map((s) => (s.roll_number === rollNumberOrId ? { ...s, ...updated } : s)));
       setEditModal({ open: false, student: null });
       showToast('Student details updated successfully.');
     } catch (err) {
@@ -773,7 +791,7 @@ export const ManageStudents = () => {
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--color-green)', fontSize: '0.85rem', padding: '0.25rem 0.6rem' }}
-                onClick={() => setSelectedIds(new Set(students.map((s) => s.registration_number)))}
+                onClick={() => setSelectedIds(new Set(students.map((s) => s.roll_number)))}
               >
                 Select all {students.length} students
               </button>
@@ -843,7 +861,7 @@ export const ManageStudents = () => {
                   </th>
                   <th style={{ padding: '1rem 1rem' }}>SL NO.</th>
                   <th style={{ padding: '1rem 1rem' }}>Name</th>
-                  <th style={{ padding: '1rem 1rem' }}>registration_number No.</th>
+                  <th style={{ padding: '1rem 1rem' }}>Roll No.</th>
                   <th style={{ padding: '1rem 1rem' }}>Hostel</th>
                   <th style={{ padding: '1rem 1rem' }}>Contact</th>
                   <th style={{ padding: '1rem 1rem', textAlign: 'right' }}>Actions</th>
@@ -851,10 +869,10 @@ export const ManageStudents = () => {
               </thead>
               <tbody>
                 {students.map((student, index) => {
-                  const isSelected = selectedIds.has(student.registration_number);
+                  const isSelected = selectedIds.has(student.roll_number);
                   return (
                     <tr
-                      key={student.registration_number}
+                      key={student.roll_number}
                       style={{
                         borderBottom: '1px solid var(--border-subtle)',
                         backgroundColor: isSelected
@@ -864,16 +882,16 @@ export const ManageStudents = () => {
                       }}
                     >
                       <td style={{ padding: '0.85rem 0.75rem', textAlign: 'center' }}>
-                        <label htmlFor={`select-student-checkbox-${student.registration_number}`} className="sr-only">
-                          Select {student.name} ({student.registration_number})
+                        <label htmlFor={`select-student-checkbox-${student.roll_number}`} className="sr-only">
+                          Select {student.name} ({student.roll_number})
                         </label>
                         <input
-                          id={`select-student-checkbox-${student.registration_number}`}
-                          name={`selectStudent_${student.registration_number}`}
+                          id={`select-student-checkbox-${student.roll_number}`}
+                          name={`selectStudent_${student.roll_number}`}
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelect(student.registration_number)}
-                          aria-label={`Select ${student.name} (${student.registration_number})`}
+                          onChange={() => toggleSelect(student.roll_number)}
+                          aria-label={`Select ${student.name} (${student.roll_number})`}
                           style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-coral)' }}
                         />
                       </td>
@@ -881,13 +899,23 @@ export const ManageStudents = () => {
                         #{index + 1}
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>
-                        {student.name}
+                        <div>{student.name}</div>
+                        {student.profile_picture_url && (
+                          <img src={student.profile_picture_url} alt="avatar"
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--color-green)', marginTop: '3px' }} />
+                        )}
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <span className="badge badge-navy">{student.registration_number}</span>
+                        <span className="badge badge-navy">{student.roll_number}</span>
+                        {student.registration_number && (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '2px' }}>Reg: {student.registration_number}</div>
+                        )}
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontWeight: 500 }}>
                         {student.hostel}
+                        {student.room_number && (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)' }}>Room: {student.room_number}</div>
+                        )}
                       </td>
                       <td style={{ padding: '0.85rem 1rem', color: 'var(--color-charcoal-muted)', fontSize: '0.85rem' }}>
                         <div>{student.email}</div>

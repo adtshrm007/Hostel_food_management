@@ -70,6 +70,7 @@ from app.services.preference_service import (
 )
 from app.services.student_service import (
     get_student_by_id,
+    get_student_by_roll_number,
     get_student_by_registration_number,
 )
 from app.utils.date_utils import (
@@ -238,7 +239,9 @@ def admin_update_student_preference(
     Create or override one meal preference for a student by registration number or ID.
     """
     s_str = str(student_id).strip()
-    student = get_student_by_registration_number(db=db, registration_number=s_str)
+    student = get_student_by_roll_number(db=db, roll_number=s_str)
+    if student is None:
+        student = get_student_by_registration_number(db=db, registration_number=s_str)
     if student is None and s_str.isdigit():
         try:
             val = int(s_str)

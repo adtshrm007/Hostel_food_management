@@ -23,22 +23,24 @@ STUDENT_TOKEN_EXPIRATION = timedelta(hours=1)
 def register_student(
     db: Session,
     name: str,
-    registration_number: str,
+    roll_number: str,
     phone: str,
     hostel: str,
     email: str,
     password: str,
+    registration_number: str | None = None,
+    room_number: str | None = None,
 ) -> Student:
     """
     Register a new student.
     """
 
-    existing_reg = db.exec(
-        select(Student).where(Student.registration_number == registration_number)
+    existing_roll = db.exec(
+        select(Student).where(Student.roll_number == roll_number)
     ).first()
 
-    if existing_reg:
-        raise ValueError("Registration number already registered")
+    if existing_roll:
+        raise ValueError("Roll number already registered")
 
     existing_phone = db.exec(
         select(Student).where(Student.phone == phone)
@@ -56,11 +58,14 @@ def register_student(
 
     student = Student(
         name=name,
-        registration_number=registration_number,
+        roll_number=roll_number,
         phone=phone,
         hostel=hostel,
         email=email,
         password_hash=hash_password(password),
+        registration_number=registration_number,
+        room_number=room_number,
+        photo_upload_count=0,
     )
 
     db.add(student)
@@ -77,7 +82,7 @@ def reset_student_password(
     new_password: str,
 ) -> bool:
     """
-    Reset a student's password after verifying email and optional identifier.
+    Reset a student's password after verifying email and optional identifier (roll number, reg number, or phone).
     Returns True if reset was executed, False if account/identifier check failed.
     """
 
@@ -90,10 +95,11 @@ def reset_student_password(
 
     if identifier and identifier.strip():
         clean_identifier = identifier.strip().lower()
+        student_roll = (student.roll_number or "").strip().lower()
         student_reg = (student.registration_number or "").strip().lower()
         student_phone = (student.phone or "").strip().lower()
 
-        if clean_identifier != student_reg and clean_identifier != student_phone:
+        if clean_identifier not in [student_roll, student_reg, student_phone]:
             return False
 
     student.password_hash = hash_password(new_password)

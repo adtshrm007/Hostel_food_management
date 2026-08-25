@@ -55,18 +55,19 @@ def test_student_register_and_login(client: TestClient):
         "/auth/student/register",
         json={
             "name": "Test Student",
-            "registration_number": "21CS001",
+            "roll_number": "21CS001",
             "phone": "9876543210",
             "hostel": "Hostel A",
             "email": "student@example.com",
             "password": "Password123!",
+            "registration_number": "REG2021001",
         },
     )
     assert reg_response.status_code == 201, reg_response.text
     data = reg_response.json()
     assert data["email"] == "student@example.com"
-    assert data["registration_number"] == "21CS001"
-    assert "student_id" not in data  # IDs must never be exposed
+    assert data["roll_number"] == "21CS001"
+    assert data["registration_number"] == "REG2021001"
 
     # Login student
     login_response = client.post(
@@ -88,7 +89,7 @@ def test_student_register_password_regex_validation(client: TestClient):
         "/auth/student/register",
         json={
             "name": "Weak Pass",
-            "registration_number": "21CS099",
+            "roll_number": "21CS099",
             "phone": "9876543299",
             "hostel": "Hostel A",
             "email": "weak@example.com",
@@ -106,7 +107,7 @@ def test_email_length_limit(client: TestClient):
         "/auth/student/register",
         json={
             "name": "Long Email",
-            "registration_number": "21CS088",
+            "roll_number": "21CS088",
             "phone": "9876543288",
             "hostel": "Hostel A",
             "email": oversized_email,

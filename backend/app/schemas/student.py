@@ -10,32 +10,6 @@
 #   the API.
 # - StudentCreate accepts a plain-text password only during registration.
 # - The password is hashed by auth_service.py before being stored.
-#
-# SCHEMAS:
-# - StudentBase:
-#       Common public student fields.
-#
-# - StudentCreate:
-#       Data required to register a new student.
-#
-# - StudentResponse:
-#       Safe student representation returned by the API.
-#
-# CONNECTED FILES & FOLDERS:
-# - backend/app/models/student.py
-#       Database model represented by these schemas.
-#
-# - backend/app/services/auth_service.py
-#       Uses StudentCreate data during registration.
-#
-# - backend/app/services/student_service.py
-#       Retrieves Student records for API responses.
-#
-# - backend/app/routers/auth.py
-#       Uses StudentCreate for registration.
-#
-# - backend/app/routers/student.py
-#       Uses StudentResponse for student profile responses.
 # ===============================================================================
 
 import re
@@ -50,33 +24,57 @@ class StudentBase(BaseModel):
     """
 
     name: str = Field(..., min_length=2, max_length=100, description="Student full name")
-    registration_number: str = Field(..., min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$", description="Unique student registration number")
+    roll_number: str = Field(..., min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$", description="Unique student roll number (primary academic ID)")
     phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$", description="Valid phone number (10 to 15 digits)")
     hostel: str = Field(..., min_length=2, max_length=50, description="Hostel building or block name")
     email: EmailStr = Field(..., min_length=5, max_length=254, description="Student email address")
 
-    @field_validator("name", "registration_number", "phone", "hostel", mode="before")
+    # Optional secondary fields
+    registration_number: str | None = Field(default=None, max_length=50, description="Optional secondary registration number")
+    room_number: str | None = Field(default=None, max_length=30, description="Optional hostel room number")
+    profile_picture_url: str | None = Field(default=None, description="Cloudinary delivery URL for profile avatar")
+    profile_picture_public_id: str | None = Field(default=None, description="Cloudinary asset public ID")
+    photo_upload_count: int = Field(default=0, description="Number of photo updates used by student (max 3)")
+
+    @field_validator("name", "roll_number", "phone", "hostel", "registration_number", "room_number", mode="before")
     @classmethod
-    def strip_whitespace(cls, v: str) -> str:
+    def strip_whitespace(cls, v: str | None) -> str | None:
         if isinstance(v, str):
-            return v.strip()
+            val = v.strip()
+            return val if val else None
         return v
 
 
-class StudentCreate(StudentBase):
+class StudentCreate(BaseModel):
     """
     Request schema used when registering a new student.
-
-    The plain-text password is accepted only at the API boundary.
-    It must be hashed before being stored in the database.
+    Mandatory: name, roll_number, phone, hostel, email, password.
+    Optional: registration_number, room_number.
     """
 
+    name: str = Field(..., min_length=2, max_length=100, description="Student full name")
+    roll_number: str = Field(..., min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$", description="Unique student roll number")
+    phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$", description="Valid phone number (10 to 15 digits)")
+    hostel: str = Field(..., min_length=2, max_length=50, description="Hostel building or block name")
+    email: EmailStr = Field(..., min_length=5, max_length=254, description="Student email address")
     password: str = Field(
         ...,
         min_length=8,
         max_length=16,
         description="Password (8-16 chars, at least 1 uppercase, 1 lowercase, 1 digit, 1 special char @$!%*?&)",
     )
+
+    # Optional fields during registration
+    registration_number: str | None = Field(default=None, max_length=50)
+    room_number: str | None = Field(default=None, max_length=30)
+
+    @field_validator("name", "roll_number", "phone", "hostel", "registration_number", "room_number", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str | None) -> str | None:
+        if isinstance(v, str):
+            val = v.strip()
+            return val if val else None
+        return v
 
     @field_validator("password", mode="before")
     @classmethod
@@ -99,30 +97,52 @@ class StudentCreate(StudentBase):
 class StudentResponse(StudentBase):
     """
     Response schema for safely returning student information.
-
-    password_hash and database student_id are intentionally excluded.
+    Includes database student_id for client reference, password_hash excluded.
     """
 
-    pass
+    student_id: int | None = None
+
+
+class StudentProfileUpdate(BaseModel):
+    """
+    Request schema for self-service student profile updates.
+    Students can ONLY update optional fields: registration_number, room_number.
+    (Protected fields like name, roll_number, phone, email, hostel are locked).
+    """
+
+    registration_number: str | None = Field(default=None, max_length=50)
+    room_number: str | None = Field(default=None, max_length=30)
+
+    @field_validator("registration_number", "room_number", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str | None) -> str | None:
+        if isinstance(v, str):
+            val = v.strip()
+            return val if val else None
+        return v
 
 
 class StudentUpdate(BaseModel):
     """
-    Request schema used when updating an existing student.
-    All fields are optional.
+    Request schema used by Administrators to override student details.
+    Allows updating all protected and optional fields.
     """
 
-    name: str | None = Field(None, min_length=2, max_length=100, description="Student full name")
-    registration_number: str | None = Field(None, min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$", description="Unique student registration number")
-    phone: str | None = Field(None, pattern=r"^\+?[0-9]{10,15}$", description="Valid phone number (10 to 15 digits)")
-    hostel: str | None = Field(None, min_length=2, max_length=50, description="Hostel building or block name")
-    email: EmailStr | None = Field(None, min_length=5, max_length=254, description="Student email address")
+    name: str | None = Field(None, min_length=2, max_length=100)
+    roll_number: str | None = Field(None, min_length=2, max_length=30, pattern=r"^[A-Za-z0-9\-/]+$")
+    phone: str | None = Field(None, pattern=r"^\+?[0-9]{10,15}$")
+    hostel: str | None = Field(None, min_length=2, max_length=50)
+    email: EmailStr | None = Field(None, min_length=5, max_length=254)
+    registration_number: str | None = Field(None, max_length=50)
+    room_number: str | None = Field(None, max_length=30)
+    reset_photo_count: bool | None = Field(None, description="Reset student photo upload count back to 0")
 
-    @field_validator("name", "registration_number", "phone", "hostel", mode="before")
+    @field_validator("name", "roll_number", "phone", "hostel", "registration_number", "room_number", mode="before")
     @classmethod
     def strip_whitespace(cls, v: str | None) -> str | None:
         if isinstance(v, str):
-            return v.strip()
+            val = v.strip()
+            return val if val else None
         return v
 
 
@@ -138,6 +158,7 @@ class BulkDeleteRequest(BaseModel):
     Request schema used when bulk deleting students. Requires admin password re-verification.
     """
 
+    roll_numbers: list[str] = Field(default_factory=list)
     registration_numbers: list[str] = Field(default_factory=list)
     student_ids: list[int] = Field(default_factory=list)
     admin_password: str = Field(..., min_length=1, description="Admin password re-verification")

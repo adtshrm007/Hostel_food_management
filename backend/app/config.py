@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str | None = None
     ADMIN_PASSWORD: str | None = None
 
+    # Cloudinary Image Storage Settings
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     # Environment mode: 'production' or 'development'
     ENVIRONMENT: str = 'production'
 

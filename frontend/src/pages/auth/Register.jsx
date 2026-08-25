@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import authApi from '../../api/authApi';
 import { extractErrorMessage } from '../../utils/errorHelpers';
-import { User, Mail, Lock, Phone, Building, Hash, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Phone, Building, Hash, DoorOpen, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { HOSTEL_OPTIONS } from '../../utils/hostels';
 import { validatePassword, validateEmail, validateHostel } from '../../utils/validation';
 
@@ -12,11 +12,13 @@ export const Register = () => {
   // Student Form State
   const [studentForm, setStudentForm] = useState({
     name: '',
-    registration_number: '',
+    roll_number: '',         // Mandatory — primary academic identifier
     phone: '',
     hostel: HOSTEL_OPTIONS[0],
     email: '',
     password: '',
+    registration_number: '', // Optional
+    room_number: '',          // Optional
   });
 
   const [error, setError] = useState('');
@@ -58,9 +60,25 @@ export const Register = () => {
 
     setSubmitting(true);
 
+    // Build payload — only include optional fields if non-empty
+    const payload = {
+      name: studentForm.name,
+      roll_number: studentForm.roll_number,
+      phone: studentForm.phone,
+      hostel: studentForm.hostel,
+      email: studentForm.email,
+      password: studentForm.password,
+    };
+    if (studentForm.registration_number.trim()) {
+      payload.registration_number = studentForm.registration_number.trim();
+    }
+    if (studentForm.room_number.trim()) {
+      payload.room_number = studentForm.room_number.trim();
+    }
+
     try {
-      await authApi.registerStudent(studentForm);
-      setSuccessMsg('Student registration successful! Redirecting to login...');
+      await authApi.registerStudent(payload);
+      setSuccessMsg('Registration successful! Redirecting to login...');
       setTimeout(() => {
         navigate('/login');
       }, 1500);
@@ -72,6 +90,11 @@ export const Register = () => {
     }
   };
 
+  const inputIconStyle = {
+    position: 'absolute', left: '12px', top: '50%',
+    transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)',
+  };
+
   return (
     <div className="container page-section" style={{
       display: 'flex',
@@ -81,7 +104,7 @@ export const Register = () => {
     }}>
       <div className="card animate-fade-in" style={{
         width: '100%',
-        maxWidth: '520px',
+        maxWidth: '560px',
         backgroundColor: 'var(--color-white)',
         padding: '2rem 1.5rem',
         borderRadius: '24px',
@@ -95,13 +118,9 @@ export const Register = () => {
             width="56"
             height="56"
             style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              objectFit: 'cover',
+              width: '56px', height: '56px', borderRadius: '16px', objectFit: 'cover',
               border: '2px solid var(--color-green)',
-              boxShadow: '0 4px 12px rgba(46, 155, 98, 0.2)',
-              marginBottom: '0.75rem',
+              boxShadow: '0 4px 12px rgba(46, 155, 98, 0.2)', marginBottom: '0.75rem',
             }}
           />
           <br />
@@ -131,10 +150,12 @@ export const Register = () => {
 
         {/* Student Registration Form */}
         <form onSubmit={handleSubmitStudent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          {/* Full Name */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="reg-student-name" className="form-label">Full Name</label>
+            <label htmlFor="reg-student-name" className="form-label">Full Name <span style={{ color: 'var(--color-coral)' }}>*</span></label>
             <div style={{ position: 'relative' }}>
-              <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+              <User size={18} style={inputIconStyle} />
               <input
                 id="reg-student-name"
                 type="text"
@@ -149,19 +170,22 @@ export const Register = () => {
             </div>
           </div>
 
+          {/* Roll Number + Phone */}
           <div className="grid-2 form-grid-2" style={{ gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="reg-student-reg" className="form-label">Registration Number</label>
+              <label htmlFor="reg-student-roll" className="form-label">
+                Roll Number <span style={{ color: 'var(--color-coral)' }}>*</span>
+              </label>
               <div style={{ position: 'relative' }}>
-                <Hash size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                <Hash size={18} style={inputIconStyle} />
                 <input
-                  id="reg-student-reg"
+                  id="reg-student-roll"
                   type="text"
-                  name="registration_number"
+                  name="roll_number"
                   className="form-input"
                   style={{ paddingLeft: '2.5rem' }}
                   placeholder="e.g. 21CS001"
-                  value={studentForm.registration_number}
+                  value={studentForm.roll_number}
                   onChange={handleStudentChange}
                   required
                 />
@@ -169,9 +193,11 @@ export const Register = () => {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="reg-student-phone" className="form-label">Phone Number</label>
+              <label htmlFor="reg-student-phone" className="form-label">
+                Phone Number <span style={{ color: 'var(--color-coral)' }}>*</span>
+              </label>
               <div style={{ position: 'relative' }}>
-                <Phone size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                <Phone size={18} style={inputIconStyle} />
                 <input
                   id="reg-student-phone"
                   type="tel"
@@ -187,11 +213,14 @@ export const Register = () => {
             </div>
           </div>
 
+          {/* Hostel + Email */}
           <div className="grid-2 form-grid-2" style={{ gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="reg-student-hostel" className="form-label">Hostel Assignment</label>
+              <label htmlFor="reg-student-hostel" className="form-label">
+                Hostel <span style={{ color: 'var(--color-coral)' }}>*</span>
+              </label>
               <div style={{ position: 'relative' }}>
-                <Building size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                <Building size={18} style={inputIconStyle} />
                 <select
                   id="reg-student-hostel"
                   name="hostel"
@@ -202,18 +231,18 @@ export const Register = () => {
                   required
                 >
                   {HOSTEL_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
+                    <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
               </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="reg-student-email" className="form-label">Student Registered Email</label>
+              <label htmlFor="reg-student-email" className="form-label">
+                Email <span style={{ color: 'var(--color-coral)' }}>*</span>
+              </label>
               <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+                <Mail size={18} style={inputIconStyle} />
                 <input
                   id="reg-student-email"
                   type="email"
@@ -229,10 +258,13 @@ export const Register = () => {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-            <label htmlFor="reg-student-password" className="form-label">Create Password</label>
+          {/* Password */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="reg-student-password" className="form-label">
+              Create Password <span style={{ color: 'var(--color-coral)' }}>*</span>
+            </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
+              <Lock size={18} style={inputIconStyle} />
               <input
                 id="reg-student-password"
                 type={showPassword ? 'text' : 'password'}
@@ -251,6 +283,56 @@ export const Register = () => {
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
+            </div>
+          </div>
+
+          {/* Optional Section Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0.25rem 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-charcoal-muted)', whiteSpace: 'nowrap', fontWeight: 600 }}>
+              Optional — can be added later in Profile
+            </span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+          </div>
+
+          {/* Registration Number + Room Number (Optional) */}
+          <div className="grid-2 form-grid-2" style={{ gap: '1rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="reg-student-regnum" className="form-label" style={{ color: 'var(--color-charcoal-muted)' }}>
+                Registration Number
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Hash size={18} style={{ ...inputIconStyle, color: 'var(--color-mint)' }} />
+                <input
+                  id="reg-student-regnum"
+                  type="text"
+                  name="registration_number"
+                  className="form-input"
+                  style={{ paddingLeft: '2.5rem', borderStyle: 'dashed' }}
+                  placeholder="e.g. REG2021001"
+                  value={studentForm.registration_number}
+                  onChange={handleStudentChange}
+                />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="reg-student-room" className="form-label" style={{ color: 'var(--color-charcoal-muted)' }}>
+                Room Number
+              </label>
+              <div style={{ position: 'relative' }}>
+                <DoorOpen size={18} style={{ ...inputIconStyle, color: 'var(--color-mint)' }} />
+                <input
+                  id="reg-student-room"
+                  type="text"
+                  name="room_number"
+                  className="form-input"
+                  style={{ paddingLeft: '2.5rem', borderStyle: 'dashed' }}
+                  placeholder="e.g. A-101"
+                  value={studentForm.room_number}
+                  onChange={handleStudentChange}
+                />
+              </div>
             </div>
           </div>
 

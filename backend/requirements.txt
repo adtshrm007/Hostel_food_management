@@ -31,6 +31,10 @@ pydantic-settings
 email-validator
 openpyxl
 
+# --- Image & Cloud Storage ---
+cloudinary
+pillow
+
 # --- Testing ---
 pytest
 httpx

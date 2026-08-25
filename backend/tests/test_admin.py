@@ -72,7 +72,7 @@ def test_admin_update_student(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Jane Doe",
-            "registration_number": "21CS005",
+            "roll_number": "21CS005",
             "phone": "9876543222",
             "hostel": "Hostel C",
             "email": "jane@example.com",
@@ -80,7 +80,7 @@ def test_admin_update_student(client: TestClient, session: Session):
         },
     )
     assert reg_response.status_code == 201
-    student_reg = "21CS005"
+    student_roll = "21CS005"
 
     # 2. Login as admin
     login_response = client.post(
@@ -91,42 +91,43 @@ def test_admin_update_student(client: TestClient, session: Session):
 
     # 3. Update student details
     update_response = client.put(
-        f"/admin/students/{student_reg}",
+        f"/admin/students/{student_roll}",
         json={
             "name": "Jane Updated",
-            "registration_number": "21CS005-U",
-            "hostel": "Hostel D"
+            "roll_number": "21CS005-U",
+            "hostel": "Hostel D",
+            "registration_number": "REG-21CS005",
         },
         headers={"Authorization": f"Bearer {token}"},
     )
     assert update_response.status_code == 200
     updated_data = update_response.json()
     assert updated_data["name"] == "Jane Updated"
-    assert updated_data["registration_number"] == "21CS005-U"
+    assert updated_data["roll_number"] == "21CS005-U"
+    assert updated_data["registration_number"] == "REG-21CS005"
     assert updated_data["hostel"] == "Hostel D"
-    assert updated_data["phone"] == "9876543222" # Unchanged
+    assert updated_data["phone"] == "9876543222"  # Unchanged
 
-    # 4. Try updating to an already registered registration_number/email
-    # Create another student first
+    # 4. Try updating to an already registered roll_number
     client.post(
         "/auth/student/register",
         json={
             "name": "Bob",
-            "registration_number": "21CS006",
+            "roll_number": "21CS006",
             "phone": "9876543223",
             "hostel": "Hostel B",
             "email": "bob@example.com",
             "password": "Password123!",
         },
     )
-    # Try updating Jane to Bob's registration number
+    # Try updating Jane to Bob's roll number
     update_fail_response = client.put(
         "/admin/students/21CS005-U",
-        json={"registration_number": "21CS006"},
+        json={"roll_number": "21CS006"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert update_fail_response.status_code == 400
-    assert "Registration number already registered" in update_fail_response.json()["detail"]
+    assert "Roll number already registered" in update_fail_response.json()["detail"]
 
 
 def test_admin_delete_student(client: TestClient, session: Session):
@@ -135,7 +136,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Delete Me",
-            "registration_number": "21CS999",
+            "roll_number": "21CS999",
             "phone": "9876543999",
             "hostel": "Hostel X",
             "email": "deleteme@example.com",
@@ -143,7 +144,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
         },
     )
     assert reg_response.status_code == 201
-    student_reg = "21CS999"
+    student_roll = "21CS999"
 
     # 2. Login as admin
     login_response = client.post(
@@ -154,7 +155,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
 
     # 3. Try delete with WRONG password
     wrong_pass_resp = client.post(
-        f"/admin/students/{student_reg}/delete",
+        f"/admin/students/{student_roll}/delete",
         json={"admin_password": "wrongpassword"},
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -162,7 +163,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
 
     # 4. Delete student with CORRECT password
     delete_response = client.post(
-        f"/admin/students/{student_reg}/delete",
+        f"/admin/students/{student_roll}/delete",
         json={"admin_password": "admin123"},
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -171,7 +172,7 @@ def test_admin_delete_student(client: TestClient, session: Session):
 
     # 5. Verify student is deleted
     get_response = client.get(
-        f"/admin/students/{student_reg}",
+        f"/admin/students/{student_roll}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert get_response.status_code == 404
@@ -183,7 +184,7 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Bulk 1",
-            "registration_number": "B1",
+            "roll_number": "B1",
             "phone": "9876500001",
             "hostel": "Hostel B",
             "email": "b1@example.com",
@@ -195,7 +196,7 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
         "/auth/student/register",
         json={
             "name": "Bulk 2",
-            "registration_number": "B2",
+            "roll_number": "B2",
             "phone": "9876500002",
             "hostel": "Hostel B",
             "email": "b2@example.com",
@@ -213,7 +214,7 @@ def test_admin_bulk_delete_students(client: TestClient, session: Session):
     # 3. Bulk delete with password verification
     bulk_response = client.post(
         "/admin/students/bulk-delete",
-        json={"registration_numbers": ["B1", "B2"], "admin_password": "admin123"},
+        json={"roll_numbers": ["B1", "B2"], "admin_password": "admin123"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert bulk_response.status_code == 200
@@ -233,7 +234,7 @@ def test_admin_get_and_override_student_preferences_large_roll_no(client: TestCl
         "/auth/student/register",
         json={
             "name": "Test Large Roll",
-            "registration_number": large_roll,
+            "roll_number": large_roll,
             "phone": "9876543219",
             "hostel": "Hostel A",
             "email": "largeroll@example.com",

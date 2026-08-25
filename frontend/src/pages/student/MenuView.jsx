@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import menuApi from '../../api/menuApi';
 import Loader from '../../components/common/Loader';
-import { Utensils, Calendar, Leaf, Drumstick, ArrowRight } from 'lucide-react';
+import ProfileModal from '../../components/student/ProfileModal';
+import { AuthContext } from '../../context/AuthContext';
+import { Utensils, Calendar, Leaf, Drumstick, ArrowRight, UserCog, AlertTriangle } from 'lucide-react';
 
 export const MenuView = () => {
+  const { user } = useContext(AuthContext);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -31,12 +35,11 @@ export const MenuView = () => {
     const dayItems = menuItems.filter((item) => item.day_of_week.toLowerCase() === day);
     const lunch = dayItems.find((item) => item.meal_type.toLowerCase() === 'lunch');
     const dinner = dayItems.find((item) => item.meal_type.toLowerCase() === 'dinner');
-    return {
-      day,
-      lunch,
-      dinner,
-    };
+    return { day, lunch, dinner };
   });
+
+  // Profile is "incomplete" if student has no profile picture
+  const profileIncomplete = user?.role === 'student' && !user?.profile_picture_url;
 
   if (loading) {
     return <Loader message="Loading weekly hostel menu..." />;
@@ -44,6 +47,41 @@ export const MenuView = () => {
 
   return (
     <div className="container page-section">
+
+      {/* ── Profile Completion Banner ── */}
+      {profileIncomplete && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: '1rem',
+            padding: '1rem 1.25rem',
+            backgroundColor: '#fffbeb',
+            border: '1.5px solid #f59e0b',
+            borderRadius: '14px',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <AlertTriangle size={22} color="#f59e0b" style={{ flexShrink: 0 }} />
+            <div>
+              <span style={{ fontWeight: 700, color: '#92400e', fontSize: '0.95rem' }}>
+                Your profile is incomplete
+              </span>
+              <span style={{ display: 'block', fontSize: '0.82rem', color: '#b45309', marginTop: '0.1rem' }}>
+                Upload a profile photo and fill in your details to complete your profile.
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowProfile(true)}
+            className="btn btn-primary"
+            style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+          >
+            <UserCog size={16} /> Complete My Profile
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="page-header-banner">
         <div>
@@ -57,6 +95,13 @@ export const MenuView = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowProfile(true)}
+            className="btn btn-outline-light"
+            style={{ width: 'fit-content' }}
+          >
+            <UserCog size={20} /> My Profile
+          </button>
           <Link to="/student/today" className="btn btn-outline-light" style={{ width: 'fit-content' }}>
             <Calendar size={20} /> See Today's Preference
           </Link>
@@ -154,6 +199,9 @@ export const MenuView = () => {
           </div>
         ))}
       </div>
+
+      {/* Profile Modal */}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   );
 };

@@ -73,11 +73,9 @@ export const adminApi = {
     return response.data;
   },
 
-  deleteStudentsBulk: async (regNumbersOrIds, adminPassword) => {
-    const isRegNumbers = Array.isArray(regNumbersOrIds) && (regNumbersOrIds.length === 0 || typeof regNumbersOrIds[0] === 'string');
-    const payload = isRegNumbers
-      ? { registration_numbers: regNumbersOrIds, admin_password: adminPassword }
-      : { student_ids: regNumbersOrIds, admin_password: adminPassword };
+  deleteStudentsBulk: async (rollNumbers, adminPassword) => {
+    // Backend now accepts roll_numbers for bulk delete
+    const payload = { roll_numbers: rollNumbers, admin_password: adminPassword };
     const response = await axiosInstance.post('/admin/students/bulk-delete', payload);
     return response.data;
   },
@@ -115,6 +113,18 @@ export const adminApi = {
   toggleWindowOverride: async (targetDate) => {
     const url = targetDate ? `/admin/window-override?target_date=${targetDate}` : '/admin/window-override';
     const response = await axiosInstance.post(url);
+    return response.data;
+  },
+
+  uploadStudentAvatar: async (rollNumberOrId, formData) => {
+    const response = await axiosInstance.post(`/admin/students/${rollNumberOrId}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteStudentAvatar: async (rollNumberOrId) => {
+    const response = await axiosInstance.delete(`/admin/students/${rollNumberOrId}/avatar`);
     return response.data;
   },
 };

@@ -47,11 +47,13 @@ def student_register(
         return register_student(
             db=db,
             name=student_data.name,
-            registration_number=student_data.registration_number,
+            roll_number=student_data.roll_number,
             phone=student_data.phone,
             hostel=student_data.hostel,
             email=student_data.email,
             password=student_data.password,
+            registration_number=student_data.registration_number,
+            room_number=student_data.room_number,
         )
     except ValueError as exc:
         raise HTTPException(
