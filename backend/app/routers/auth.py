@@ -105,7 +105,7 @@ def student_login(
             key="access_token",
             value=token,
             httponly=True,
-            samesite="lax",
+            samesite=settings.cookie_samesite,
             secure=settings.is_cookie_secure,
             max_age=86400,
         )
@@ -173,7 +173,7 @@ def admin_login(
             key="access_token",
             value=token,
             httponly=True,
-            samesite="lax",
+            samesite=settings.cookie_samesite,
             secure=settings.is_cookie_secure,
             max_age=86400,
         )
@@ -201,7 +201,12 @@ def logout(response: Response):
     """
     Clear authentication cookies.
     """
-    response.delete_cookie("access_token")
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite=settings.cookie_samesite,
+        secure=settings.is_cookie_secure,
+    )
     return {"message": "Logged out successfully"}
 
 

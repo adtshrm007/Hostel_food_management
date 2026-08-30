@@ -39,17 +39,28 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "https://gita-bhojanalaya.vercel.app",
+        "https://bhojnalay.vercel.app",
     ]
 
-    # In production (HTTPS), cookies must be Secure. If COOKIE_SECURE is not explicitly set,
-    # it defaults to True when ENVIRONMENT == 'production' and False for local development.
+    # In production (HTTPS), cookies must be Secure and SameSite='none' for cross-domain requests.
+    # If COOKIE_SECURE is not explicitly set, it defaults to True for production and False for development.
     COOKIE_SECURE: bool | None = None
+    COOKIE_SAMESITE: str | None = None
 
     @property
     def is_cookie_secure(self) -> bool:
         if self.COOKIE_SECURE is not None:
             return self.COOKIE_SECURE
         return self.ENVIRONMENT.lower() == 'production'
+
+    @property
+    def cookie_samesite(self) -> str:
+        if self.COOKIE_SAMESITE is not None:
+            return self.COOKIE_SAMESITE
+        # Cross-domain (Vercel -> Render) requires 'none' with secure=True in production.
+        # Local development on http requires 'lax'.
+        return "none" if self.is_cookie_secure else "lax"
 
     model_config = SettingsConfigDict(
         env_file=('backend/.env', '.env'),
