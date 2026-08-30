@@ -14,7 +14,7 @@ axiosInstance.interceptors.response.use(
   (error) => {
     // If the server is unreachable (Network Error) or returns a 5xx status code (crash), redirect to Vercel
     if (!error.response || (error.response.status >= 500 && error.response.status < 600)) {
-      window.location.href = 'https://gita-bhojanalaya.vercel.app/';
+      window.location.href = 'https://gita-bhojanalaya-teal.vercel.app/';
       return Promise.reject(error);
     }
 
