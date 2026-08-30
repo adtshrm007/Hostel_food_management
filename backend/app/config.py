@@ -39,8 +39,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-        "https://gita-bhojanalaya.vercel.app",
-        "https://bhojnalay.vercel.app",
+        "https://gita-bhojanalaya-teal.vercel.app",
     ]
 
     # In production (HTTPS), cookies must be Secure and SameSite='none' for cross-domain requests.
