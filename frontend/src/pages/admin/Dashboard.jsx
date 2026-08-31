@@ -77,6 +77,7 @@ export const Dashboard = () => {
 
   // Manage Window State
   const [showWindowModal, setShowWindowModal] = useState(false);
+  const [windowScope, setWindowScope] = useState('single'); // 'single', 'this_week', 'upcoming_week', 'both_weeks'
   const [windowDate, setWindowDate] = useState('');
   const [windowData, setWindowData] = useState(null);
   const [windowLoading, setWindowLoading] = useState(false);
@@ -109,6 +110,7 @@ export const Dashboard = () => {
   const handleOpenWindowModal = () => {
     const defaultDate = selectedDateStr || rangeDates[0]?.dateStr || toLocalDateStr(new Date());
     setWindowDate(defaultDate);
+    setWindowScope('single');
     setWindowError('');
     setWindowSuccessMsg('');
     setShowWindowModal(true);
@@ -131,9 +133,32 @@ export const Dashboard = () => {
       setWindowSuccessMsg(
         `Successfully ${updated.is_open ? 'OPENED' : 'CLOSED'} preference window for ${updated.target_date}! (${updated.toggles_left} toggles remaining today).`
       );
+      fetchDashboardData();
     } catch (err) {
       console.error('Failed to toggle window:', err);
       setWindowError(err.response?.data?.detail || 'Failed to toggle window status.');
+    } finally {
+      setWindowActionLoading(false);
+    }
+  };
+
+  const handleBatchWindowAction = async (action) => {
+    setWindowActionLoading(true);
+    setWindowError('');
+    setWindowSuccessMsg('');
+    try {
+      const res = await adminApi.batchWindowOverride({
+        scope: windowScope,
+        action,
+      });
+      setWindowSuccessMsg(res.message);
+      if (windowDate) {
+        fetchWindowStatus(windowDate);
+      }
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Failed batch window action:', err);
+      setWindowError(err.response?.data?.detail || 'Failed to update window status.');
     } finally {
       setWindowActionLoading(false);
     }
@@ -391,24 +416,49 @@ export const Dashboard = () => {
               )}
             </div>
 
-            {/* Date Select Dropdown */}
-            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-              <label htmlFor="window-date-select" className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)' }}>
-                Select Target Date
-              </label>
-              <select
-                id="window-date-select"
-                className="form-input"
-                value={windowDate}
-                onChange={(e) => handleWindowDateChange(e.target.value)}
-                disabled={windowLoading || windowActionLoading}
-              >
-                {rangeDates.map((d) => (
-                  <option key={d.dateStr} value={d.dateStr}>
-                    {d.isToday ? 'Today (' + d.formattedDate + ')' : d.dayName + ', ' + d.formattedDate} ({d.dateStr})
-                  </option>
-                ))}
-              </select>
+            {/* Scope Selection Tabs */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '0.4rem',
+              marginBottom: '1.25rem',
+              backgroundColor: 'var(--color-cream)',
+              padding: '0.35rem',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              {[
+                { id: 'single', label: 'Day' },
+                { id: 'this_week', label: 'This Wk' },
+                { id: 'upcoming_week', label: 'Next Wk' },
+                { id: 'both_weeks', label: 'Both Wks' },
+              ].map((tab) => {
+                const isActive = windowScope === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setWindowScope(tab.id);
+                      setWindowError('');
+                      setWindowSuccessMsg('');
+                    }}
+                    style={{
+                      padding: '0.45rem 0.3rem',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.8rem',
+                      fontWeight: isActive ? 800 : 600,
+                      cursor: 'pointer',
+                      backgroundColor: isActive ? 'var(--color-navy)' : 'transparent',
+                      color: isActive ? 'var(--color-cream)' : 'var(--color-charcoal-muted)',
+                      transition: 'all var(--transition-fast)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Error / Success Notifications */}
@@ -426,72 +476,226 @@ export const Dashboard = () => {
               </div>
             )}
 
-            {/* Window Status Card */}
-            {windowLoading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>
-                Loading window status...
-              </div>
-            ) : windowData ? (
-              <div style={{
-                backgroundColor: 'var(--color-cream)',
-                borderRadius: 'var(--radius-md)',
-                padding: '1.25rem',
-                marginBottom: '1.5rem',
-                border: '1px solid var(--border-subtle)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-navy)' }}>
-                    Current Window Status:
-                  </span>
-                  <span className={`badge ${windowData.is_open ? 'badge-mint' : 'badge-coral'}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.65rem' }}>
-                    {windowData.is_open ? 'OPEN' : 'CLOSED'}
-                  </span>
+            {/* VIEW 1: SPECIFIC SINGLE DAY */}
+            {windowScope === 'single' && (
+              <>
+                {/* Date Select Dropdown */}
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label htmlFor="window-date-select" className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-navy)' }}>
+                    Select Target Date
+                  </label>
+                  <select
+                    id="window-date-select"
+                    className="form-input"
+                    value={windowDate}
+                    onChange={(e) => handleWindowDateChange(e.target.value)}
+                    disabled={windowLoading || windowActionLoading}
+                  >
+                    {rangeDates.map((d) => (
+                      <option key={d.dateStr} value={d.dateStr}>
+                        {d.isToday ? 'Today (' + d.formattedDate + ')' : d.dayName + ', ' + d.formattedDate} ({d.dateStr})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-charcoal-muted)' }}>
-                  <span>Daily Toggle Limit (3 max):</span>
-                  <span style={{ fontWeight: 700, color: windowData.toggles_left > 0 ? 'var(--color-navy)' : 'var(--color-danger)' }}>
-                    {windowData.toggle_count} / 3 used ({windowData.toggles_left} remaining)
-                  </span>
-                </div>
-
-                {windowData.toggles_left === 0 && (
-                  <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <ShieldAlert size={14} /> Maximum limit of 3 toggles reached for this day across all admins.
+                {/* Window Status Card */}
+                {windowLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-muted)' }}>
+                    Loading window status...
                   </div>
-                )}
-              </div>
-            ) : null}
+                ) : windowData ? (
+                  <div style={{
+                    backgroundColor: 'var(--color-cream)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '1.25rem',
+                    marginBottom: '1.5rem',
+                    border: '1px solid var(--border-subtle)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-navy)' }}>
+                        Current Window Status:
+                      </span>
+                      <span className={`badge ${windowData.is_open ? 'badge-mint' : 'badge-coral'}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.65rem' }}>
+                        {windowData.is_open ? 'OPEN' : 'CLOSED'}
+                      </span>
+                    </div>
 
-            {/* Action Toggle Button */}
-            {windowData && (
-              <button
-                type="button"
-                onClick={handleToggleWindowStatus}
-                disabled={windowLoading || windowActionLoading || windowData.toggles_left === 0}
-                className="btn"
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  backgroundColor: windowData.is_open ? 'var(--color-danger)' : 'var(--color-green)',
-                  color: 'var(--color-white)',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  opacity: windowData.toggles_left === 0 ? 0.6 : 1,
-                  cursor: windowData.toggles_left === 0 ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <Power size={18} />
-                {windowActionLoading
-                  ? 'Updating Window Status...'
-                  : windowData.is_open
-                  ? 'CLOSE Selection Window for This Day'
-                  : 'OPEN Selection Window for This Day'}
-              </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-charcoal-muted)' }}>
+                      <span>Daily Toggle Limit (3 max):</span>
+                      <span style={{ fontWeight: 700, color: windowData.toggles_left > 0 ? 'var(--color-navy)' : 'var(--color-danger)' }}>
+                        {windowData.toggle_count} / 3 used ({windowData.toggles_left} remaining)
+                      </span>
+                    </div>
+
+                    {windowData.toggles_left === 0 && (
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <ShieldAlert size={14} /> Maximum limit of 3 toggles reached for this day across all admins.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Action Toggle Button */}
+                {windowData && (
+                  <button
+                    type="button"
+                    onClick={handleToggleWindowStatus}
+                    disabled={windowLoading || windowActionLoading || windowData.toggles_left === 0}
+                    className="btn"
+                    style={{
+                      width: '100%',
+                      padding: '0.8rem',
+                      backgroundColor: windowData.is_open ? 'var(--color-danger)' : 'var(--color-green)',
+                      color: 'var(--color-white)',
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      opacity: windowData.toggles_left === 0 ? 0.6 : 1,
+                      cursor: windowData.toggles_left === 0 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <Power size={18} />
+                    {windowActionLoading
+                      ? 'Updating Window Status...'
+                      : windowData.is_open
+                      ? 'CLOSE Selection Window for This Day'
+                      : 'OPEN Selection Window for This Day'}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* VIEW 2: THIS WEEK (CURRENT 7 DAYS) */}
+            {windowScope === 'this_week' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{
+                  backgroundColor: 'var(--color-cream)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem',
+                  border: '1px solid var(--border-subtle)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <Calendar size={18} color="var(--color-navy)" />
+                    <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '0.95rem' }}>
+                      Active Current Week (7 Days)
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', margin: 0, lineHeight: 1.5 }}>
+                    Applies to all 7 days of the active week (Monday through Sunday). Students will immediately be permitted or restricted from setting preferences for this week.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    disabled={windowActionLoading}
+                    onClick={() => handleBatchWindowAction('open')}
+                    className="btn btn-primary"
+                    style={{ padding: '0.8rem 0.5rem', fontWeight: 700, fontSize: '0.88rem' }}
+                  >
+                    {windowActionLoading ? 'Processing...' : '🟢 Open This Week'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={windowActionLoading}
+                    onClick={() => handleBatchWindowAction('close')}
+                    className="btn"
+                    style={{ padding: '0.8rem 0.5rem', fontWeight: 700, fontSize: '0.88rem', backgroundColor: 'var(--color-danger)', color: '#fff' }}
+                  >
+                    {windowActionLoading ? 'Processing...' : '🔴 Close This Week'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW 3: UPCOMING WEEK (NEXT 7 DAYS) */}
+            {windowScope === 'upcoming_week' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{
+                  backgroundColor: 'var(--color-cream)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem',
+                  border: '1px solid var(--border-subtle)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <Calendar size={18} color="var(--color-navy)" />
+                    <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '0.95rem' }}>
+                      Upcoming Week (7 Days)
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', margin: 0, lineHeight: 1.5 }}>
+                    Applies to all 7 days of next week (Monday through Sunday). Allows students to set their food preferences in advance even outside weekend hours.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    disabled={windowActionLoading}
+                    onClick={() => handleBatchWindowAction('open')}
+                    className="btn btn-primary"
+                    style={{ padding: '0.8rem 0.5rem', fontWeight: 700, fontSize: '0.88rem' }}
+                  >
+                    {windowActionLoading ? 'Processing...' : '🟢 Open Next Week'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={windowActionLoading}
+                    onClick={() => handleBatchWindowAction('close')}
+                    className="btn"
+                    style={{ padding: '0.8rem 0.5rem', fontWeight: 700, fontSize: '0.88rem', backgroundColor: 'var(--color-danger)', color: '#fff' }}
+                  >
+                    {windowActionLoading ? 'Processing...' : '🔴 Close Next Week'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW 4: BOTH WEEKS (14 DAYS) */}
+            {windowScope === 'both_weeks' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{
+                  backgroundColor: 'var(--color-cream)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem',
+                  border: '1px solid var(--border-subtle)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <Calendar size={18} color="var(--color-coral)" />
+                    <span style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '0.95rem' }}>
+                      Both Weeks (14 Days Combined)
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-charcoal-muted)', margin: 0, lineHeight: 1.5 }}>
+                    Applies concurrently across all 14 days (Current Week + Upcoming Week). Completely opens or locks student meal selections across the entire 2-week period.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    disabled={windowActionLoading}
+                    onClick={() => handleBatchWindowAction('open')}
+                    className="btn btn-primary"
+                    style={{ padding: '0.8rem 0.5rem', fontWeight: 700, fontSize: '0.88rem' }}
+                  >
+                    {windowActionLoading ? 'Processing...' : '🟢 Open Both Weeks'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={windowActionLoading}
+                    onClick={() => handleBatchWindowAction('close')}
+                    className="btn"
+                    style={{ padding: '0.8rem 0.5rem', fontWeight: 700, fontSize: '0.88rem', backgroundColor: 'var(--color-danger)', color: '#fff' }}
+                  >
+                    {windowActionLoading ? 'Processing...' : '🔴 Close Both Weeks'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

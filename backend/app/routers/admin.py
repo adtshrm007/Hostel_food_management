@@ -48,13 +48,14 @@ from app.core.security import verify_password
 from app.models.admin import Admin
 from app.models.preference import Preference
 from app.models.student import Student
-from app.schemas.admin import AdminResponse, DeleteAdminRequest, WindowOverrideResponse
+from app.schemas.admin import AdminResponse, DeleteAdminRequest, WindowOverrideResponse, BatchWindowOverrideRequest, BatchWindowOverrideResponse
 from app.schemas.preference import PreferenceResponse
 from app.schemas.student import StudentResponse, StudentUpdate, BulkDeleteRequest, DeleteStudentRequest
 from app.services.preference_service import (
     get_student_week_preferences,
     get_window_override,
     toggle_window_override,
+    set_batch_window_override,
     is_today_window_open,
 )
 from app.services.student_service import (
@@ -73,7 +74,8 @@ from app.services.student_service import (
     bulk_import_students_service,
 )
 from app.services.cloudinary_service import upload_profile_picture
-from app.utils.date_utils import get_upcoming_week_start, get_current_local_date
+from app.utils.date_utils import get_current_week_start, get_upcoming_week_start, get_current_local_date
+
 
 
 
@@ -919,3 +921,62 @@ def toggle_window_override_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         )
+
+
+@router.post(
+    "/window-override/batch",
+    response_model=BatchWindowOverrideResponse,
+)
+def batch_window_override_status(
+    payload: BatchWindowOverrideRequest,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Open or close the preference window for This Week, Upcoming Week, Both Weeks, or a Custom list of dates.
+    """
+    today = get_current_local_date()
+    is_open = payload.action.lower() == "open"
+    target_dates: list[date] = []
+
+    if payload.scope == "this_week":
+        curr_start = get_current_week_start(today)
+        target_dates = [curr_start + timedelta(days=i) for i in range(7)]
+    elif payload.scope == "upcoming_week":
+        up_start = get_upcoming_week_start(today)
+        target_dates = [up_start + timedelta(days=i) for i in range(7)]
+    elif payload.scope == "both_weeks":
+        curr_start = get_current_week_start(today)
+        up_start = get_upcoming_week_start(today)
+        target_dates = [curr_start + timedelta(days=i) for i in range(7)] + [up_start + timedelta(days=i) for i in range(7)]
+    elif payload.scope == "custom" and payload.dates:
+        target_dates = payload.dates
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid scope. Valid scopes are 'this_week', 'upcoming_week', 'both_weeks', or 'custom'.",
+        )
+
+    set_batch_window_override(
+        db=db,
+        dates=target_dates,
+        is_open=is_open,
+        admin_id=current_admin.admin_id,
+    )
+
+    action_label = "OPENED" if is_open else "CLOSED"
+    scope_label = {
+        "this_week": "This Week (7 days)",
+        "upcoming_week": "Upcoming Week (7 days)",
+        "both_weeks": "Both Weeks (14 days)",
+        "custom": f"{len(target_dates)} Selected Dates",
+    }.get(payload.scope, payload.scope)
+
+    return BatchWindowOverrideResponse(
+        scope=payload.scope,
+        action=payload.action.lower(),
+        is_open=is_open,
+        affected_dates=[str(d) for d in target_dates],
+        count=len(target_dates),
+        message=f"Successfully {action_label} selection window for {scope_label}!",
+    )

@@ -65,6 +65,9 @@ class DeleteAdminRequest(BaseModel):
     admin_password: str
 
 
+from datetime import date
+
+
 class WindowOverrideResponse(BaseModel):
     """
     Response schema for daily window override status and remaining toggles.
@@ -74,3 +77,28 @@ class WindowOverrideResponse(BaseModel):
     is_open: bool
     toggle_count: int
     toggles_left: int
+
+
+class BatchWindowOverrideRequest(BaseModel):
+    """
+    Request schema for batch opening or closing preference window.
+    scope: 'this_week', 'upcoming_week', 'both_weeks', or 'custom'
+    action: 'open' or 'close'
+    """
+
+    scope: str = Field(..., description="Scope: 'this_week', 'upcoming_week', 'both_weeks', or 'custom'")
+    action: str = Field(..., description="Action: 'open' or 'close'")
+    dates: list[date] | None = Field(default=None, description="Optional custom list of dates")
+
+
+class BatchWindowOverrideResponse(BaseModel):
+    """
+    Response schema for batch window override operation.
+    """
+
+    scope: str
+    action: str
+    is_open: bool
+    affected_dates: list[str]
+    count: int
+    message: str

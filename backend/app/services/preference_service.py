@@ -699,6 +699,44 @@ def toggle_window_override(db: Session, target_date: date, admin_id: int) -> Win
     return override
 
 
+def set_batch_window_override(
+    db: Session,
+    dates: list[date],
+    is_open: bool,
+    admin_id: int,
+) -> list[WindowOverride]:
+    """
+    Open or close the preference window for a batch of dates (e.g. this week, upcoming week, or both weeks).
+    """
+    results = []
+    now_utc = datetime.now(timezone.utc)
+
+    for target_date in dates:
+        override = get_window_override(db, target_date)
+        if override is None:
+            override = WindowOverride(
+                target_date=target_date,
+                is_open=is_open,
+                toggle_count=1,
+                updated_by=admin_id,
+                updated_at=now_utc,
+            )
+            db.add(override)
+        else:
+            override.is_open = is_open
+            override.toggle_count += 1
+            override.updated_by = admin_id
+            override.updated_at = now_utc
+            db.add(override)
+        results.append(override)
+
+    db.commit()
+    for r in results:
+        db.refresh(r)
+    return results
+
+
+
 def is_today_window_open(db: Session, current_date: date) -> bool:
     """
     Determine if today's preference window is open, either via standard weekend rule

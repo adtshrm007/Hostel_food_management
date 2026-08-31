@@ -127,6 +127,15 @@ export const adminApi = {
     return response.data;
   },
 
+  batchWindowOverride: async ({ scope, action, dates }) => {
+    const response = await axiosInstance.post('/admin/window-override/batch', {
+      scope,
+      action,
+      dates,
+    });
+    return response.data;
+  },
+
   uploadStudentAvatar: async (rollNumberOrId, formData) => {
     const response = await axiosInstance.post(`/admin/students/${rollNumberOrId}/avatar`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
