@@ -26,7 +26,7 @@ export const FilterBar = ({
       }}>
         {/* Search Query Input */}
         <div style={{ flex: '1 1 220px', position: 'relative', width: '100%' }}>
-          <label htmlFor="student-search-query" className="sr-only">Search by name, reg no, email, or phone</label>
+          <label htmlFor="student-search-query" className="sr-only">Search by name, roll no, reg no, email, or phone</label>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-charcoal-muted)' }} />
           <input
             id="student-search-query"
@@ -34,8 +34,8 @@ export const FilterBar = ({
             type="text"
             className="form-input"
             style={{ paddingLeft: '2.5rem' }}
-            placeholder="Search by name, reg no, email, or phone..."
-            aria-label="Search students by name, reg no, email, or phone"
+            placeholder="Search by name, roll no, reg no, email, or phone..."
+            aria-label="Search students by name, roll no, reg no, email, or phone"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

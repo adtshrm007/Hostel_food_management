@@ -22,7 +22,7 @@ DEFAULT_MENU = [
     {"day_of_week": "monday", "meal_type": "dinner", "veg_menu": "Buta Dal, Roti", "non_veg_menu": "Buta Dal, Roti"},
 
     {"day_of_week": "tuesday", "meal_type": "lunch", "veg_menu": "Aloo, Potala Curry, Sagoo Papad", "non_veg_menu": "Aloo, Potala Curry, Sagoo Papad"},
-    {"day_of_week": "tuesday", "meal_type": "dinner", "veg_menu": "Soyabean Chilli, Paratha", "non_veg_menu": "Soyabean Chilli, Paratha"},
+    {"day_of_week": "tuesday", "meal_type": "dinner", "veg_menu": "Soyabean Chilli, Roti", "non_veg_menu": "Soyabean Chilli, Roti"},
 
     {"day_of_week": "wednesday", "meal_type": "lunch", "veg_menu": "Rice , Dal, Manchurian, Papad", "non_veg_menu": "Rice,Dal,Fish Curry,Papad"},
     {"day_of_week": "wednesday", "meal_type": "dinner", "veg_menu": "Mushroom Chilli, Roti", "non_veg_menu": "Chicken Chilli, Roti"},

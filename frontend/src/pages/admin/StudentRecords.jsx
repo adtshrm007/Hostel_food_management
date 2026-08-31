@@ -49,7 +49,7 @@ export const StudentRecords = () => {
             Student Records & Search Directory
           </h2>
           <p style={{ color: 'var(--color-mint)', fontSize: '0.95rem', margin: 0 }}>
-            Filter students by name, registration number, hostel, or contact info to inspect or override preferences.
+            Filter students by name, roll number, registration number, hostel, or contact info to inspect or override preferences.
           </p>
         </div>
       </div>
