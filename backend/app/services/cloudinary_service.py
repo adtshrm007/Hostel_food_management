@@ -2,12 +2,17 @@
 # FILE PURPOSE:
 # Cloudinary Image Storage and Profile Picture Management Service.
 # Handles validation (strict <= 250 KB limit, format checks), unique public_id
-# generation, face-centered cropping transformations, and deletion.
+# generation, smart center-fill cropping, and deletion.
 #
 # CONNECTED FILES & FOLDERS:
 # - Connected to: backend/app/config.py (Reads Cloudinary credentials from settings)
 # - Connected to: backend/app/services/student_service.py (Called during avatar update/delete)
 # - Connected to: backend/app/routers/student.py (Invoked by student avatar upload/delete endpoints)
+#
+# FIX NOTES:
+# - Removed gravity="face" (requires paid Cloudinary add-on) -> uses gravity="center"
+# - Removed transformation param from upload() call (was causing API errors on free plan)
+# - Images are stored raw; optimized URL is generated at delivery time via cloudinary_url()
 # ===============================================================================
 
 import io
@@ -71,7 +76,7 @@ def validate_profile_image(file_bytes: bytes) -> str:
                 f"Unsupported image format '{image_format or 'unknown'}'. "
                 f"Allowed formats are JPEG, PNG, and WebP."
             )
-        # Verify image stream
+        # Verify image stream integrity
         image.verify()
         return image_format.lower()
     except Exception as exc:
@@ -83,7 +88,9 @@ def validate_profile_image(file_bytes: bytes) -> str:
 def generate_profile_picture_url(public_id: str) -> str:
     """
     Generates an optimized delivery URL for a given Cloudinary public_id.
-    Applies 512x512 dimensions, face-centered fill cropping, auto quality and auto format.
+    Applies 512x512 dimensions, center-fill cropping, auto quality and auto format.
+    Transformations are applied at delivery time (CDN), NOT on the stored asset.
+    This avoids paid add-on requirements and works on all Cloudinary plans.
     """
     if not public_id:
         return ""
@@ -93,7 +100,7 @@ def generate_profile_picture_url(public_id: str) -> str:
         width=512,
         height=512,
         crop="fill",
-        gravity="face",
+        gravity="center",
         quality="auto",
         fetch_format="auto",
         secure=True,
@@ -108,15 +115,20 @@ def upload_profile_picture(file_bytes: bytes, student_id: int | str) -> dict:
     Public ID Structure:
         profile-pictures/{student_id}/{uuid}
 
+    The image is stored as-is (no incoming transformation). An optimized delivery
+    URL is generated via cloudinary_url() at request time. This works on all
+    Cloudinary plans including the free tier.
+
     Returns:
         dict: {
             "public_id": str,
-            "secure_url": str
+            "secure_url": str   <- optimized 512x512 CDN delivery URL
         }
 
     Raises:
-        ValueError: If validation fails or Cloudinary credentials/upload fails.
+        ValueError: If validation fails or Cloudinary upload fails.
     """
+    # Validate before touching Cloudinary
     validate_profile_image(file_bytes)
     get_cloudinary_config()
 
@@ -124,29 +136,24 @@ def upload_profile_picture(file_bytes: bytes, student_id: int | str) -> dict:
     public_id = f"profile-pictures/{student_id}/{unique_suffix}"
 
     try:
+        # Upload the raw image with NO incoming transformation.
+        # Transformations (resize, crop, quality) are applied at delivery time via CDN URL.
         response = cloudinary.uploader.upload(
             file_bytes,
             public_id=public_id,
-            folder=None,
             overwrite=True,
             resource_type="image",
-            transformation=[
-                {
-                    "width": 512,
-                    "height": 512,
-                    "crop": "fill",
-                    "gravity": "face",
-                    "quality": "auto",
-                    "fetch_format": "auto",
-                }
-            ],
         )
 
-        optimized_url = generate_profile_picture_url(response.get("public_id", public_id))
+        # Generate the optimized delivery URL from the confirmed public_id
+        confirmed_public_id = response.get("public_id", public_id)
+        optimized_url = generate_profile_picture_url(confirmed_public_id)
+
         return {
-            "public_id": response.get("public_id", public_id),
+            "public_id": confirmed_public_id,
             "secure_url": optimized_url or response.get("secure_url", ""),
         }
+
     except Exception as exc:
         raise ValueError(f"Cloudinary upload failed: {str(exc)}")
 
@@ -154,6 +161,7 @@ def upload_profile_picture(file_bytes: bytes, student_id: int | str) -> dict:
 def delete_profile_picture(public_id: str) -> bool:
     """
     Deletes a profile picture from Cloudinary by its public_id.
+    Returns True on success or if asset does not exist.
     """
     if not public_id:
         return True
