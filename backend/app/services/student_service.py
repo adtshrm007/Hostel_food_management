@@ -110,6 +110,34 @@ def search_students(
     return list(db.exec(statement).all())
 
 
+def count_students(
+    db: Session,
+    search: str | None = None,
+    hostel: str | None = None,
+) -> int:
+    """
+    Get the exact total count of students matching optional search and/or hostel filter.
+    """
+    statement = select(func.count(Student.student_id))
+
+    if hostel:
+        statement = statement.where(Student.hostel.ilike(f"%{hostel}%"))
+
+    if search:
+        search_pattern = f"%{search.strip()}%"
+        statement = statement.where(
+            (Student.name.ilike(search_pattern))
+            | (Student.roll_number.ilike(search_pattern))
+            | (Student.email.ilike(search_pattern))
+            | (Student.phone.ilike(search_pattern))
+            | (Student.registration_number.ilike(search_pattern))
+            | (Student.room_number.ilike(search_pattern))
+        )
+
+    result = db.exec(statement).one()
+    return int(result) if result is not None else 0
+
+
 def update_student_profile(
     db: Session,
     student_id: int,

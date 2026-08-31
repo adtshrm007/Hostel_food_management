@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Edit3, UserCheck } from 'lucide-react';
 
-export const StudentTable = ({ students = [], loading = false }) => {
+export const StudentTable = ({ students = [], loading = false, startIndex = 0 }) => {
   const navigate = useNavigate();
 
   if (loading) {
@@ -58,7 +58,7 @@ export const StudentTable = ({ students = [], loading = false }) => {
                 }}
               >
                 <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: 'var(--color-navy)' }}>
-                  #{index + 1}
+                  #{(startIndex || 0) + index + 1}
                 </td>
                 <td style={{ padding: '1rem 1.25rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>
                   <div>{student.name}</div>

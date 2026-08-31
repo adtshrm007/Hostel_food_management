@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import adminApi from '../../api/adminApi';
 import FilterBar from '../../components/admin/FilterBar';
+import Pagination from '../../components/common/Pagination';
 import Loader from '../../components/common/Loader';
 import { HOSTEL_OPTIONS } from '../../utils/hostels';
 import {
@@ -559,11 +560,15 @@ const TableSkeleton = () => (
 // ═══════════════════════════════════════════════════════════════════
 // ManageStudents Page
 // ═══════════════════════════════════════════════════════════════════
+const PAGE_SIZE = 50;
+
 export const ManageStudents = () => {
   const navigate = useNavigate();
 
   // Student data
   const [students, setStudents] = useState([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -588,20 +593,36 @@ export const ManageStudents = () => {
 
   // Use a stable ref for the select-all checkbox to avoid forced reflow
   const selectAllCheckboxRef = useRef(null);
+  const tableContainerRef = useRef(null);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
   }, []);
 
   // ─── Fetch Students ─────────────────────────────────────────────
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (page = 1, search = searchQuery, hostel = selectedHostel) => {
     try {
       setError('');
-      const data = await adminApi.getStudents({
-        search: searchQuery,
-        hostel: selectedHostel,
-      });
-      setStudents(data);
+      const skip = (page - 1) * PAGE_SIZE;
+      const [data, countData] = await Promise.all([
+        adminApi.getStudents({
+          search,
+          hostel,
+          skip,
+          limit: PAGE_SIZE,
+        }),
+        adminApi.getStudentsCount({
+          search,
+          hostel,
+        }).catch(() => null),
+      ]);
+      setStudents(data || []);
+      if (countData && typeof countData.total === 'number') {
+        setTotalStudents(countData.total);
+      } else {
+        setTotalStudents((data || []).length);
+      }
+      setCurrentPage(page);
       setSelectedIds(new Set());
     } catch (err) {
       console.error('Failed to fetch student records:', err);
@@ -612,16 +633,26 @@ export const ManageStudents = () => {
   }, [searchQuery, selectedHostel]);
 
   useEffect(() => {
-    fetchStudents();
+    fetchStudents(1, searchQuery, selectedHostel);
   }, [selectedHostel]); // Auto search on hostel change
+
+  const handleSearch = () => {
+    fetchStudents(1, searchQuery, selectedHostel);
+  };
 
   const handleReset = () => {
     setSearchQuery('');
     setSelectedHostel('');
-    setSelectedIds(new Set());
-    adminApi.getStudents().then((data) => {
-      setStudents(data);
-    });
+    fetchStudents(1, '', '');
+  };
+
+  const handlePageChange = (newPage) => {
+    fetchStudents(newPage, searchQuery, selectedHostel);
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // ─── Selection Handlers ────────────────────────────────────────
@@ -670,6 +701,7 @@ export const ManageStudents = () => {
           await adminApi.deleteStudent(student.roll_number, adminPassword);
           showToast(`Student "${student.name}" deleted successfully.`);
           setStudents((prev) => prev.filter((s) => s.roll_number !== student.roll_number));
+          setTotalStudents((prev) => Math.max(0, prev - 1));
           setSelectedIds((prev) => {
             const next = new Set(prev);
             next.delete(student.roll_number);
@@ -702,6 +734,7 @@ export const ManageStudents = () => {
           await adminApi.deleteStudentsBulk(Array.from(selectedIds), adminPassword);
           showToast(`Successfully deleted ${count} student${count > 1 ? 's' : ''}.`);
           setStudents((prev) => prev.filter((s) => !selectedIds.has(s.roll_number)));
+          setTotalStudents((prev) => Math.max(0, prev - count));
           setSelectedIds(new Set());
         } catch (err) {
           showToast(err?.response?.data?.detail || 'Failed to delete students.', 'error');
@@ -769,7 +802,7 @@ export const ManageStudents = () => {
         setSearchQuery={setSearchQuery}
         selectedHostel={selectedHostel}
         setSelectedHostel={setSelectedHostel}
-        onSearch={fetchStudents}
+        onSearch={handleSearch}
         onReset={handleReset}
       />
 
@@ -793,7 +826,7 @@ export const ManageStudents = () => {
                 style={{ color: 'var(--color-green)', fontSize: '0.85rem', padding: '0.25rem 0.6rem' }}
                 onClick={() => setSelectedIds(new Set(students.map((s) => s.roll_number)))}
               >
-                Select all {students.length} students
+                Select all {students.length} on this page
               </button>
             )}
             {selectedIds.size > 0 && (
@@ -817,136 +850,149 @@ export const ManageStudents = () => {
       )}
 
       {/* Student Table with Checkboxes */}
-      {loading ? (
-        <TableSkeleton />
-      ) : students.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', backgroundColor: 'var(--color-white)' }}>
-          <UserCheck size={48} color="var(--color-charcoal-muted)" style={{ margin: '0 auto 1rem auto' }} />
-          <h4 style={{ color: 'var(--color-navy)' }}>No Students Found</h4>
-          <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.9rem' }}>
-            Try clearing filters or registering new students in the system.
-          </p>
-        </div>
-      ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: 'var(--color-white)' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              textAlign: 'left',
-              fontSize: '0.92rem',
-            }}>
-              <thead>
-                <tr style={{
-                  backgroundColor: 'var(--color-navy)',
-                  color: 'var(--color-cream)',
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '0.85rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}>
-                  <th style={{ padding: '1rem 0.75rem', width: '48px', textAlign: 'center' }}>
-                    <label htmlFor="select-all-students-checkbox" className="sr-only">Select all students</label>
-                    <input
-                      id="select-all-students-checkbox"
-                      name="selectAllStudents"
-                      type="checkbox"
-                      checked={allSelected}
-                      ref={selectAllCheckboxRef}
-                      onChange={toggleSelectAll}
-                      aria-label="Select all students"
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-coral)' }}
-                      title={allSelected ? 'Deselect all' : 'Select all'}
-                    />
-                  </th>
-                  <th style={{ padding: '1rem 1rem' }}>SL NO.</th>
-                  <th style={{ padding: '1rem 1rem' }}>Name</th>
-                  <th style={{ padding: '1rem 1rem' }}>Roll No.</th>
-                  <th style={{ padding: '1rem 1rem' }}>Hostel</th>
-                  <th style={{ padding: '1rem 1rem' }}>Contact</th>
-                  <th style={{ padding: '1rem 1rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student, index) => {
-                  const isSelected = selectedIds.has(student.roll_number);
-                  return (
-                    <tr
-                      key={student.roll_number}
-                      style={{
-                        borderBottom: '1px solid var(--border-subtle)',
-                        backgroundColor: isSelected
-                          ? 'rgba(242, 140, 91, 0.08)'
-                          : index % 2 === 0 ? 'var(--color-white)' : 'var(--color-cream)',
-                        transition: 'background-color var(--transition-fast)',
-                      }}
-                    >
-                      <td style={{ padding: '0.85rem 0.75rem', textAlign: 'center' }}>
-                        <label htmlFor={`select-student-checkbox-${student.roll_number}`} className="sr-only">
-                          Select {student.name} ({student.roll_number})
-                        </label>
-                        <input
-                          id={`select-student-checkbox-${student.roll_number}`}
-                          name={`selectStudent_${student.roll_number}`}
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelect(student.roll_number)}
-                          aria-label={`Select ${student.name} (${student.roll_number})`}
-                          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-coral)' }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem', fontWeight: 700, color: 'var(--color-navy)' }}>
-                        #{index + 1}
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>
-                        <div>{student.name}</div>
-                        {student.profile_picture_url && (
-                          <img src={student.profile_picture_url} alt="avatar"
-                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--color-green)', marginTop: '3px' }} />
-                        )}
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        <span className="badge badge-navy">{student.roll_number}</span>
-                        {student.registration_number && (
-                          <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '2px' }}>Reg: {student.registration_number}</div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem', fontWeight: 500 }}>
-                        {student.hostel}
-                        {student.room_number && (
-                          <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)' }}>Room: {student.room_number}</div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem', color: 'var(--color-charcoal-muted)', fontSize: '0.85rem' }}>
-                        <div>{student.email}</div>
-                        <div>{student.phone}</div>
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => handleEditOpen(student)}
-                            className="btn btn-sm btn-primary"
-                            title="Edit Student Details"
-                          >
-                            <Edit3 size={14} /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSingle(student)}
-                            className="btn btn-sm btn-outline"
-                            style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
-                            title="Delete Student Permanently"
-                          >
-                            <Trash2 size={14} /> Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      <div ref={tableContainerRef}>
+        {loading ? (
+          <TableSkeleton />
+        ) : students.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', backgroundColor: 'var(--color-white)' }}>
+            <UserCheck size={48} color="var(--color-charcoal-muted)" style={{ margin: '0 auto 1rem auto' }} />
+            <h4 style={{ color: 'var(--color-navy)' }}>No Students Found</h4>
+            <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.9rem' }}>
+              Try clearing filters or registering new students in the system.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: 'var(--color-white)' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                textAlign: 'left',
+                fontSize: '0.92rem',
+              }}>
+                <thead>
+                  <tr style={{
+                    backgroundColor: 'var(--color-navy)',
+                    color: 'var(--color-cream)',
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}>
+                    <th style={{ padding: '1rem 0.75rem', width: '48px', textAlign: 'center' }}>
+                      <label htmlFor="select-all-students-checkbox" className="sr-only">Select all students</label>
+                      <input
+                        id="select-all-students-checkbox"
+                        name="selectAllStudents"
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={selectAllCheckboxRef}
+                        onChange={toggleSelectAll}
+                        aria-label="Select all students"
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-coral)' }}
+                        title={allSelected ? 'Deselect all' : 'Select all'}
+                      />
+                    </th>
+                    <th style={{ padding: '1rem 1rem' }}>SL NO.</th>
+                    <th style={{ padding: '1rem 1rem' }}>Name</th>
+                    <th style={{ padding: '1rem 1rem' }}>Roll No.</th>
+                    <th style={{ padding: '1rem 1rem' }}>Hostel</th>
+                    <th style={{ padding: '1rem 1rem' }}>Contact</th>
+                    <th style={{ padding: '1rem 1rem', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, index) => {
+                    const isSelected = selectedIds.has(student.roll_number);
+                    return (
+                      <tr
+                        key={student.roll_number}
+                        style={{
+                          borderBottom: '1px solid var(--border-subtle)',
+                          backgroundColor: isSelected
+                            ? 'rgba(242, 140, 91, 0.08)'
+                            : index % 2 === 0 ? 'var(--color-white)' : 'var(--color-cream)',
+                          transition: 'background-color var(--transition-fast)',
+                        }}
+                      >
+                        <td style={{ padding: '0.85rem 0.75rem', textAlign: 'center' }}>
+                          <label htmlFor={`select-student-checkbox-${student.roll_number}`} className="sr-only">
+                            Select {student.name} ({student.roll_number})
+                          </label>
+                          <input
+                            id={`select-student-checkbox-${student.roll_number}`}
+                            name={`selectStudent_${student.roll_number}`}
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(student.roll_number)}
+                            aria-label={`Select ${student.name} (${student.roll_number})`}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-coral)' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: 700, color: 'var(--color-navy)' }}>
+                          #{(currentPage - 1) * PAGE_SIZE + index + 1}
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>
+                          <div>{student.name}</div>
+                          {student.profile_picture_url && (
+                            <img src={student.profile_picture_url} alt="avatar"
+                              style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--color-green)', marginTop: '3px' }} />
+                          )}
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem' }}>
+                          <span className="badge badge-navy">{student.roll_number}</span>
+                          {student.registration_number && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)', marginTop: '2px' }}>Reg: {student.registration_number}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: 500 }}>
+                          {student.hostel}
+                          {student.room_number && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-muted)' }}>Room: {student.room_number}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem', color: 'var(--color-charcoal-muted)', fontSize: '0.85rem' }}>
+                          <div>{student.email}</div>
+                          <div>{student.phone}</div>
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => handleEditOpen(student)}
+                              className="btn btn-sm btn-primary"
+                              title="Edit Student Details"
+                            >
+                              <Edit3 size={14} /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSingle(student)}
+                              className="btn btn-sm btn-outline"
+                              style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
+                              title="Delete Student Permanently"
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      {!loading && totalStudents > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalStudents}
+          pageSize={PAGE_SIZE}
+          onPageChange={handlePageChange}
+          itemLabel="students"
+        />
       )}
 
       {/* Modals */}

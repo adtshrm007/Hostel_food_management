@@ -39,7 +39,7 @@ from datetime import date, timedelta, datetime
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Response, status
 from sqlmodel import Session, select
 
 from app.core.permissions import require_admin
@@ -63,6 +63,7 @@ from app.services.student_service import (
     get_student_by_roll_number,
     get_student_by_registration_number,
     search_students,
+    count_students,
     update_student,
     admin_update_student,
     update_student_avatar,
@@ -94,23 +95,44 @@ def get_my_admin_profile(
     return current_admin
 
 
-# STUDENT RECORDS
+# STUDENT RECORDS & COUNT
+
+@router.get(
+    "/students-count",
+    response_model=dict,
+)
+def get_students_count(
+    search: str | None = None,
+    hostel: str | None = None,
+    current_admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve the exact total headcount of registered students matching optional search / hostel filter.
+    """
+    total = count_students(db=db, search=search, hostel=hostel)
+    return {"total": total}
+
 
 @router.get(
     "/students",
     response_model=list[StudentResponse],
 )
 def list_students(
+    response: Response,
     search: str | None = None,
     hostel: str | None = None,
     skip: int = Query(0, ge=0, description="Number of student records to skip"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum student records to return"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum student records to return"),
     current_admin: Admin = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
     Retrieve student records for the administrator with optional search, hostel filter, and pagination.
     """
+    total = count_students(db=db, search=search, hostel=hostel)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
 
     if search is not None or hostel is not None:
         return search_students(

@@ -10,8 +10,19 @@ export const adminApi = {
     const params = new URLSearchParams();
     if (filters.search) params.append('search', filters.search);
     if (filters.hostel) params.append('hostel', filters.hostel);
+    if (filters.skip !== undefined && filters.skip !== null) params.append('skip', filters.skip);
+    if (filters.limit !== undefined && filters.limit !== null) params.append('limit', filters.limit);
 
     const response = await axiosInstance.get(`/admin/students?${params.toString()}`);
+    return response.data;
+  },
+
+  getStudentsCount: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.hostel) params.append('hostel', filters.hostel);
+
+    const response = await axiosInstance.get(`/admin/students-count?${params.toString()}`);
     return response.data;
   },
 

@@ -46,6 +46,7 @@ const getDatesFromTodayToNextSunday = () => {
 export const Dashboard = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState([]);
+  const [totalRegisteredCount, setTotalRegisteredCount] = useState(0);
   const [pendingAdmins, setPendingAdmins] = useState([]);
   const [rangeSummary, setRangeSummary] = useState({});
   const [loading, setLoading] = useState(true);
@@ -139,15 +140,20 @@ export const Dashboard = () => {
   };
 
   const fetchDashboardData = useCallback(async () => {
-
     try {
       setLoading(true);
-      const [studentData, summaryData, pendingAdminData] = await Promise.all([
-        adminApi.getStudents(),
+      const [studentData, countData, summaryData, pendingAdminData] = await Promise.all([
+        adminApi.getStudents({ limit: 10 }),
+        adminApi.getStudentsCount().catch(() => null),
         adminApi.getDailySummary({ start_date, end_date }).catch(() => null),
         adminApi.getPendingAdmins().catch(() => []),
       ]);
-      setStudents(studentData);
+      setStudents(studentData || []);
+      if (countData && typeof countData.total === 'number') {
+        setTotalRegisteredCount(countData.total);
+      } else {
+        setTotalRegisteredCount((studentData || []).length);
+      }
       if (summaryData?.daily_summaries) {
         setRangeSummary(summaryData.daily_summaries);
       }
@@ -300,7 +306,7 @@ export const Dashboard = () => {
     }
   };
 
-  const totalStudents = students.length;
+  const totalStudents = totalRegisteredCount || students.length;
   const uniqueHostels = useMemo(() => Array.from(new Set(students.map((s) => s.hostel))).length, [students]);
 
   const activeDailySummary = useMemo(() => {
