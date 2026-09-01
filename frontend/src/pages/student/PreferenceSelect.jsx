@@ -55,15 +55,17 @@ export const PreferenceSelect = () => {
           activeWeekTab === 'current' ? currentWeekDays[0] : upcomingWeekDays[0]
         ).dateStr;
 
+        const defaultOpen = activeWeekTab === 'upcoming' ? isSelectionWindowOpen() : false;
+
         const [menuData, prefData, windowStatus] = await Promise.all([
           menuApi.getWeeklyMenu(),
           studentApi.getWeeklyPreferences(initialWeekStart),
-          studentApi.getTodayWindowStatus().catch(() => ({ is_open: isSelectionWindowOpen() })),
+          studentApi.getWeekWindowStatus(initialWeekStart).catch(() => ({ is_open: defaultOpen })),
         ]);
 
         setMenuItems(menuData);
         setExistingPreferences(prefData || []);
-        setWindowOpen(windowStatus?.is_open ?? isSelectionWindowOpen());
+        setWindowOpen(windowStatus?.is_open ?? defaultOpen);
 
         // Pre-fill selections from stored preferences
         const initialSelections = {};
@@ -91,11 +93,17 @@ export const PreferenceSelect = () => {
 
     const targetDays = tab === 'current' ? currentWeekDays : upcomingWeekDays;
     const weekStartStr = targetDays[0].dateStr;
+    const defaultOpen = tab === 'upcoming' ? isSelectionWindowOpen() : false;
 
     try {
       setLoadingWeek(true);
-      const prefData = await studentApi.getWeeklyPreferences(weekStartStr);
+      const [prefData, windowStatus] = await Promise.all([
+        studentApi.getWeeklyPreferences(weekStartStr),
+        studentApi.getWeekWindowStatus(weekStartStr).catch(() => ({ is_open: defaultOpen })),
+      ]);
+
       setExistingPreferences(prefData || []);
+      setWindowOpen(windowStatus?.is_open ?? defaultOpen);
 
       const newSelections = {};
       (prefData || []).forEach((pref) => {

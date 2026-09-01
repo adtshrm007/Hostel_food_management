@@ -47,6 +47,11 @@ export const studentApi = {
     return response.data;
   },
 
+  getWeekWindowStatus: async (weekStartStr) => {
+    const response = await axiosInstance.get(`/preference/week-window/${weekStartStr}`);
+    return response.data;
+  },
+
   submitTodayPreferences: async (lunch, dinner) => {
     const response = await axiosInstance.put('/preference/today', { lunch, dinner });
     return response.data;

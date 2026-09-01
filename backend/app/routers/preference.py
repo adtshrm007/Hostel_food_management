@@ -46,7 +46,7 @@
 #       Provides upcoming-week calculations.
 # ===============================================================================
 
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
@@ -66,6 +66,7 @@ from app.services.preference_service import (
     get_student_week_preferences,
     submit_weekly_preferences,
     is_today_window_open,
+    is_week_window_open,
     submit_today_preferences,
 )
 from app.services.student_service import (
@@ -191,6 +192,29 @@ def check_today_window_status(
     today = get_current_local_date()
     open_status = is_today_window_open(db=db, current_date=today)
     return {"is_open": open_status, "today_date": str(today)}
+
+
+@router.get(
+    "/week-window/{week_start_str}",
+)
+def check_week_window_status(
+    week_start_str: str,
+    current_student: Student = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """
+    Check if the preference selection window is open for a specific week start date (YYYY-MM-DD).
+    """
+    try:
+        week_start = datetime.strptime(week_start_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format for week_start. Expected YYYY-MM-DD.",
+        )
+    today = get_current_local_date()
+    open_status = is_week_window_open(db=db, week_start=week_start, current_date=today)
+    return {"is_open": open_status, "week_start": week_start_str}
 
 
 @router.put(

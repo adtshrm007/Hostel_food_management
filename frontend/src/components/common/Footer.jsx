@@ -65,10 +65,10 @@ export const Footer = () => {
           gap: '0.75rem',
         }}>
           <div>
-            © {new Date().getFullYear()} Gita Autonomous College BBSR. All rights reserved.
+            © {new Date().getFullYear()} GITA Autonomous College BBSR. All rights reserved.
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            Crafted with <Heart size={14} color="var(--color-coral)" fill="var(--color-coral)" />by DEPT.of CST.
+            Crafted with <Heart size={14} color="var(--color-coral)" fill="var(--color-coral)" />by Aditya Prasad Barik & Aditya Sharma
           </div>
         </div>
       </div>

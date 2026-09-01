@@ -361,19 +361,17 @@ def submit_weekly_preferences(
     - is_final=True: Finalizes selections and locks student edits permanently.
     """
 
-    # Check selection window (respecting admin overrides).
-
-    if not is_today_window_open(db, current_date):
-        raise ValueError(
-            "Preference selection window is currently closed."
-        )
-
     # Validate all 14 preference items before changing the database.
-
     week_start = validate_weekly_submission(
         preferences=preferences,
         current_date=current_date,
     )
+
+    # Check selection window for the specific target week (respecting admin overrides).
+    if not is_week_window_open(db, week_start, current_date):
+        raise ValueError(
+            "Preference selection window for the selected week is currently closed."
+        )
 
     # Fetch all existing preferences for this student and week.
     existing_records = db.exec(
@@ -746,6 +744,33 @@ def is_today_window_open(db: Session, current_date: date) -> bool:
     if override is not None:
         return override.is_open
     return is_selection_open(current_date)
+
+
+def is_week_window_open(db: Session, week_start: date, current_date: date) -> bool:
+    """
+    Check if a specific week is open for preference selection.
+    A week is open if:
+    1. An admin has overridden the window to open for any day in this week.
+    2. OR, it is the upcoming week AND the standard selection window (weekend) is open.
+    """
+    week_dates = [week_start + timedelta(days=i) for i in range(7)]
+    overrides = db.exec(
+        select(WindowOverride)
+        .where(WindowOverride.target_date.in_(week_dates))
+        .where(WindowOverride.is_open == True)
+    ).all()
+
+    if overrides:
+        return True
+
+    # Standard weekend rule: only opens the UPCOMING week
+    if is_selection_open(current_date):
+        up_week_start = get_upcoming_week_start(current_date)
+        if week_start == up_week_start:
+            return True
+
+    return False
+
 
 
 def submit_today_preferences(

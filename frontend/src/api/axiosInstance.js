@@ -12,8 +12,13 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If the server is unreachable (Network Error) or returns a 5xx status code (crash), redirect to Vercel
-    if (!error.response || (error.response.status >= 500 && error.response.status < 600)) {
+    // In production, if server is unreachable or crashes (5xx), redirect to fallback Vercel app
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.endsWith('.local');
+
+    if (!isLocalhost && (!error.response || (error.response.status >= 500 && error.response.status < 600))) {
       window.location.href = 'https://gita-bhojanalaya-teal.vercel.app/';
       return Promise.reject(error);
     }
